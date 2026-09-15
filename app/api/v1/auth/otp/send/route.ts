@@ -1,6 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, ok } from "@/lib/api";
-import { getClientIp } from "@/lib/api/request";
+import { getClientIp, readJsonBody } from "@/lib/api/request";
 import { setPendingLoginMobile } from "@/lib/auth/pending-login";
 import { requestLoginOtp } from "@/lib/services/auth.service";
 import { requestOtpSchema } from "@/lib/validation/auth";
@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * requestLoginOtp. The code is never part of the response.
  */
 export const POST = apiHandler(async (request: NextRequest) => {
-  const { mobile } = requestOtpSchema.parse(await request.json());
+  const { mobile } = requestOtpSchema.parse(await readJsonBody(request));
   const result = await requestLoginOtp(mobile, getClientIp(request));
 
   // Lets /verify know which number is pending without putting it in the URL.

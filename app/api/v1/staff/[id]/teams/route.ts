@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, created, ok } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { requireUser } from "@/lib/auth";
 import {
   assignStaffToTeam,
@@ -21,7 +22,7 @@ type Context = { params: Promise<{ id: string }> };
 export const POST = apiHandler(async (request: NextRequest, ctx: Context) => {
   const caller = await requireUser();
   const { id } = await ctx.params;
-  const input = assignStaffTeamSchema.parse(await request.json());
+  const input = assignStaffTeamSchema.parse(await readJsonBody(request));
   return created(await assignStaffToTeam(caller, id, input));
 });
 

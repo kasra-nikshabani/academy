@@ -277,6 +277,9 @@ model Season {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  schoolEnrollments SchoolEnrollment[]
+  teamMemberships   TeamMembership[]
+
   @@index([status])
   @@index([startYear])
 }
@@ -300,6 +303,8 @@ model School {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  enrollments SchoolEnrollment[]
+
   @@index([sportId, isActive])
 }
 
@@ -321,7 +326,8 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  staff StaffTeam[]
+  staff       StaffTeam[]
+  memberships TeamMembership[]
 
   @@index([sportId, isActive])
   @@index([ageGroupId])
@@ -444,7 +450,9 @@ model Player {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guardians PlayerGuardian[]
+  guardians         PlayerGuardian[]
+  schoolEnrollments SchoolEnrollment[]
+  teamMemberships   TeamMembership[]
 
   @@index([status])
 }
@@ -530,4 +538,98 @@ model StaffTeam {
 
   @@unique([staffId, teamId])
   @@index([teamId])
+}
+
+
+// ---------------------------------------------------------------------------
+// Enrollment — Phase 6
+//
+// Two independent relationships, deliberately not nested:
+//   SchoolEnrollment — a player attends a sports school in a season
+//   TeamMembership   — a player belongs to a squad in a season
+//
+// A player can hold both at once. Being accepted into a main team does **not**
+// end a school enrolment; only a manager's explicit action does
+// (BUSINESS_RULES §2).
+// ---------------------------------------------------------------------------
+
+enum EnrollmentStatus {
+  PENDING
+  ACTIVE
+  TRANSFERRED
+  COMPLETED
+  CANCELLED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  INACTIVE
+  RELEASED
+}
+
+model SchoolEnrollment {
+  id String @id @default(cuid())
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  schoolId String
+  school   School @relation(fields: [schoolId], references: [id], onDelete: Restrict)
+
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  status EnrollmentStatus @default(PENDING)
+
+  enrolledAt DateTime  @default(now())
+  /// Set when the enrolment ends. The row is never deleted — a player's
+  /// history of which schools they attended is the record (CLAUDE.md §2).
+  endedAt    DateTime?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, schoolId, seasonId])
+  @@index([schoolId, status])
+  @@index([seasonId])
+}
+
+model TeamMembership {
+  id String @id @default(cuid())
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  status MembershipStatus @default(ACTIVE)
+
+  /// A player may belong to more than one squad in a season — training up an
+  /// age group is ordinary in youth football — but exactly one membership per
+  /// season is the primary one, so attendance and reporting have an
+  /// unambiguous home team. Enforced in the service, transactionally.
+  isPrimary Boolean @default(false)
+
+  /// Squad number within this team, when the club assigns one.
+  jerseyNumber Int?
+
+  joinedAt DateTime  @default(now())
+  /// Set when the player leaves. The row stays as history.
+  leftAt   DateTime?
+
+  notes String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([playerId, teamId, seasonId])
+  @@index([teamId, status])
+  @@index([seasonId])
+  @@index([playerId, seasonId])
 }

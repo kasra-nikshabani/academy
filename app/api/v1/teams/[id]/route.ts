@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, ok } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { requireUser } from "@/lib/auth";
 import {
   deactivateTeam,
@@ -22,7 +23,7 @@ export const GET = apiHandler(async (_request: NextRequest, ctx: Context) => {
 export const PATCH = apiHandler(async (request: NextRequest, ctx: Context) => {
   const caller = await requireUser();
   const { id } = await ctx.params;
-  const input = updateTeamSchema.parse(await request.json());
+  const input = updateTeamSchema.parse(await readJsonBody(request));
   return ok(await updateTeam(caller, id, input));
 });
 

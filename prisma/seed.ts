@@ -482,6 +482,80 @@ async function main(): Promise<void> {
 
     console.info("  \u2713 1 guardian (linked to 1 player)");
 
+    // --- enrolment --------------------------------------------------------
+    const school = await prisma.school.findUniqueOrThrow({
+      where: { slug: "football-school-isfahan" },
+    });
+
+    // Every player attends the school; this is the base path into the academy.
+    for (const playerId of createdPlayers) {
+      await prisma.schoolEnrollment.upsert({
+        where: {
+          playerId_schoolId_seasonId: {
+            playerId,
+            schoolId: school.id,
+            seasonId: season.id,
+          },
+        },
+        update: {},
+        create: {
+          playerId,
+          schoolId: school.id,
+          seasonId: season.id,
+          status: "ACTIVE",
+        },
+      });
+    }
+
+    // Two of them are also in the U14 squad — the coach's scope resolves
+    // through these rows, and the school enrolment above deliberately stays
+    // in place (BUSINESS_RULES §2).
+    const squad = createdPlayers.slice(0, 2);
+    for (const playerId of squad) {
+      await prisma.teamMembership.upsert({
+        where: {
+          playerId_teamId_seasonId: {
+            playerId,
+            teamId: u14.id,
+            seasonId: season.id,
+          },
+        },
+        update: { status: "ACTIVE", leftAt: null },
+        create: {
+          playerId,
+          teamId: u14.id,
+          seasonId: season.id,
+          status: "ACTIVE",
+          isPrimary: true,
+        },
+      });
+    }
+
+    // One player in the U16 squad, so "another coach's player" is real.
+    if (createdPlayers[2]) {
+      await prisma.teamMembership.upsert({
+        where: {
+          playerId_teamId_seasonId: {
+            playerId: createdPlayers[2],
+            teamId: u16.id,
+            seasonId: season.id,
+          },
+        },
+        update: { status: "ACTIVE", leftAt: null },
+        create: {
+          playerId: createdPlayers[2],
+          teamId: u16.id,
+          seasonId: season.id,
+          status: "ACTIVE",
+          isPrimary: true,
+        },
+      });
+    }
+
+    console.info(
+      `  \u2713 ${createdPlayers.length} school enrolments, 3 team memberships`,
+    );
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );

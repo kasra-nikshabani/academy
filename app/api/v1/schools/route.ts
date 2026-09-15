@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, created, ok } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { requireUser } from "@/lib/auth";
 import { createSchool, listSchools } from "@/lib/services/academy.service";
 import { createSchoolSchema } from "@/lib/validation/academy";
@@ -22,6 +23,6 @@ export const GET = apiHandler(async (request: NextRequest) => {
 
 export const POST = apiHandler(async (request: NextRequest) => {
   const caller = await requireUser();
-  const input = createSchoolSchema.parse(await request.json());
+  const input = createSchoolSchema.parse(await readJsonBody(request));
   return created(await createSchool(caller, input));
 });

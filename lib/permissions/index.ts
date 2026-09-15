@@ -19,7 +19,11 @@ export {
   requireRole,
   type AuthorizedUser,
 } from "./authorize";
-export { resolvePlayerScope, resolveScope } from "./resolve-scope";
+export {
+  resolvePlayerScope,
+  resolveScope,
+  resolveTeamScope,
+} from "./resolve-scope";
 export {
   UNRESTRICTED_SCOPE,
   assertWithinScope,
