@@ -4,11 +4,32 @@ PostgreSQL 17 + Prisma 7.
 
 ## 1. وضعیت فعلی
 
-`prisma/schema.prisma` فقط `generator` و `datasource` دارد. **هیچ Model تعریف نشده است.**
+اولین Migration در Phase 2 اجرا شد: `20260915085940_identity_user_and_otp`.
 
-این عمدی است: Phase 0 فقط زنجیره اتصال و خط لوله Migration را اثبات می‌کند. ساختن Model ساختگی برای «اجرای اولین Migration» بدهی فنی تولید می‌کند، پس اولین Migration همراه با اولین Domain واقعی (Phase 2) ساخته می‌شود.
+| Model | فاز | توضیح |
+|---|---|---|
+| `User` | ۲ | حساب کاربری؛ کلید یکتا `mobile` |
+| `OtpCode` | ۲ | کدهای ورود، به‌صورت Hash |
 
-اثبات اتصال: `tests/integration/health.test.ts` و `GET /api/v1/health`.
+Enum ها: `UserStatus` · `OtpPurpose`
+
+نقش‌ها و مجوزها (`Role`، `Permission`، `UserRole`، `RolePermission`) در Phase 3 اضافه می‌شوند.
+
+### چند تصمیم در مدل `OtpCode`
+
+- `mobile` روی خود رکورد نگه داشته می‌شود، نه فقط از طریق `userId` — چون کد ممکن است برای شماره‌ای بدون حساب درخواست شود و Rate Limit باید بر اساس شماره کار کند
+- `codeHash` همیشه `HMAC-SHA256` است؛ کد خام هرگز ذخیره نمی‌شود
+- `consumedAt` مصرف یک‌باره را تضمین می‌کند
+- `attempts` سقف تلاش را می‌شمارد
+- `ipHash` فقط Digest است، نه نشانی خام
+
+### Seed
+
+```bash
+pnpm db:seed
+```
+
+شش حساب ساختگی می‌سازد (Admin، Manager، Coach، Player، Parent و یک حساب Blocked برای تست). هیچ داده واقعی در Seed نیست.
 
 ## 2. نکته مهم Prisma 7
 

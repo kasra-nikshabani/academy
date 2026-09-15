@@ -2,9 +2,9 @@
 
 سامانه مدیریت آکادمی باشگاه فولاد مبارکه سپاهان — چندرشته‌ای، چند رده سنی، RTL و Production-Grade.
 
-> **وضعیت فعلی:** Phase 0 (Foundation) و Phase 1 (Design System) تکمیل شده‌اند.
-> Design System به‌صورت زنده در `/style-guide` قابل مشاهده است.
-> هنوز هیچ Domain Model، احراز هویت یا پنل کاربری پیاده‌سازی نشده.
+> **وضعیت فعلی:** Phase 0 (Foundation)، Phase 1 (Design System) و Phase 2 (Authentication) تکمیل شده‌اند.
+> ورود با موبایل و OTP کار می‌کند؛ Design System به‌صورت زنده در `/style-guide` دیده می‌شود.
+> نقش‌ها و دسترسی‌ها (Phase 3) و پنل‌های نقش‌محور هنوز پیاده‌سازی نشده‌اند.
 > نقشه راه در [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Stack
@@ -36,8 +36,11 @@ pnpm install
 cp .env.example .env     # سپس مقادیر را پر کنید
 pnpm db:up               # اجرای PostgreSQL روی پورت 5436
 pnpm db:generate         # تولید Prisma Client
+pnpm db:seed             # حساب‌های ساختگی برای توسعه
 pnpm dev                 # http://localhost:3200
 ```
+
+برای ورود، یکی از شماره‌های Seed (مثلاً `09120000001`) را در `/login` وارد کنید؛ کد تأیید در خروجی Dev Server چاپ می‌شود.
 
 بررسی سلامت سیستم:
 
@@ -62,6 +65,7 @@ curl http://localhost:3200/api/v1/health
 | `pnpm verify` | typecheck + lint + test + build |
 | `pnpm db:up` / `pnpm db:down` | بالا/پایین آوردن دیتابیس |
 | `pnpm db:migrate` | اجرای Migration در Development |
+| `pnpm db:seed` | ساخت حساب‌های ساختگی برای توسعه |
 | `pnpm db:studio` | Prisma Studio |
 
 ## مستندات
