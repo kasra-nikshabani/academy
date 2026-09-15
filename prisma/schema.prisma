@@ -175,3 +175,151 @@ model RolePermission {
   @@unique([roleId, permissionId])
   @@index([permissionId])
 }
+
+
+// ---------------------------------------------------------------------------
+// Academy structure — Phase 4
+//
+//   Sport ──┬── AgeGroup ──┐
+//           ├── School      ├── Team
+//           └──────────────┘
+//
+// Teams are **not** season-scoped: "Football U14" is the same team from one
+// year to the next, and it is the *membership* that carries the season
+// (TeamMembership: playerId + teamId + seasonId). Tying the team itself to a
+// season would fork the roster history every summer.
+// ---------------------------------------------------------------------------
+
+enum SeasonStatus {
+  UPCOMING
+  ACTIVE
+  COMPLETED
+  ARCHIVED
+}
+
+model Sport {
+  id String @id @default(cuid())
+  /// URL segment for the public pages, e.g. /sports/football
+  slug String @unique
+  name   String
+  nameEn String?
+
+  description String?
+  isActive    Boolean @default(true)
+  /// Manual ordering in lists; sports are few and rank by importance, not name.
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ageGroups AgeGroup[]
+  schools   School[]
+  teams     Team[]
+
+  @@index([isActive, displayOrder])
+}
+
+/// An age band within one sport.
+///
+/// Bands belong to a sport rather than being shared: football runs U12–U21
+/// while another sport may band differently, and editing one must not move
+/// another sport's boundaries.
+///
+/// The band is stored as an **age range**, not as birth years. Birth years
+/// shift every season — a player who is U14 in 1405 is U16 material in 1407 —
+/// so the eligible birth years are derived per season instead of being frozen
+/// into the row. See lib/services/age-group.ts.
+model AgeGroup {
+  id String @id @default(cuid())
+
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  /// Short label, e.g. `U14`.
+  code String
+  /// Persian name, e.g. «نوجوانان».
+  name String
+
+  /// Youngest and oldest age admitted, inclusive. `U14` with minAge 12 and
+  /// maxAge 13 admits players who turn 12 or 13 in the season year.
+  minAge Int
+  maxAge Int
+
+  displayOrder Int     @default(0)
+  isActive     Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams Team[]
+
+  @@unique([sportId, code])
+  @@index([sportId, displayOrder])
+}
+
+model Season {
+  id   String @id @default(cuid())
+  /// Display label, e.g. «۱۴۰۴-۱۴۰۵».
+  name String @unique
+
+  /// The Jalali year the season starts in. Age groups are computed from this:
+  /// a player's age for the season is `startYear − birthYear`, by birth year
+  /// alone, which is how youth football bands are drawn
+  /// (docs/BUSINESS_RULES.md §4).
+  startYear Int
+
+  startDate DateTime
+  endDate   DateTime
+
+  status SeasonStatus @default(UPCOMING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([startYear])
+}
+
+model School {
+  id String @id @default(cuid())
+
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  slug String @unique
+  name String
+
+  description String?
+  city        String?
+  address     String?
+  phone       String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sportId, isActive])
+}
+
+model Team {
+  id String @id @default(cuid())
+
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Cascade)
+
+  ageGroupId String
+  ageGroup   AgeGroup @relation(fields: [ageGroupId], references: [id], onDelete: Restrict)
+
+  slug String @unique
+  name String
+
+  description String?
+  isActive    Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sportId, isActive])
+  @@index([ageGroupId])
+}

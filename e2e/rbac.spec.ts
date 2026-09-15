@@ -4,13 +4,16 @@ import { signInAs } from "./support/sign-in";
 test.describe("roles and permissions", () => {
   test("the dashboard shows the roles a user holds", async ({ page }) => {
     await signInAs(page, ["STAFF"]);
-    await expect(page.getByText("کادر فنی")).toBeVisible();
+    // Scoped to the card: the sidebar footer also lists the caller's roles.
+    await expect(page.getByRole("main").getByText("کادر فنی")).toBeVisible();
   });
 
   test("a user with two roles sees both", async ({ page }) => {
     await signInAs(page, ["STAFF", "PARENT"]);
-    await expect(page.getByText("کادر فنی")).toBeVisible();
-    await expect(page.getByText("ولی", { exact: true })).toBeVisible();
+
+    const main = page.getByRole("main");
+    await expect(main.getByText("کادر فنی")).toBeVisible();
+    await expect(main.getByText("ولی", { exact: true })).toBeVisible();
   });
 
   test("/api/v1/me reports roles and permissions", async ({ page }) => {

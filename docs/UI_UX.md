@@ -161,6 +161,9 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `EmptyState` | `components/states/empty-state.tsx` |
 | `ErrorState` | `components/states/error-state.tsx` |
 | `TableSkeleton` / `CardGridSkeleton` / `StatCardsSkeleton` | `components/states/loading-state.tsx` |
+| `DataTable` | `components/ui/data-table.tsx` |
+| `AppShell` | `components/layout/app-shell.tsx` |
+| `SidebarNav` | `components/navigation/sidebar-nav.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -168,7 +171,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | کامپوننت | فاز | دلیل |
 |---|---|---|
 | `Chart` (+ Recharts) | ۱۴ | تا وقتی نموداری وجود ندارد، افزودن Recharts یک وابستگی بدون مصرف است |
-| `DataTable` | ۵ | انتزاع جدول داده بدون یک فهرست واقعی، حدس زدن است |
+| ~~`DataTable`~~ | ✅ ۴ | ساخته شد وقتی اولین فهرست واقعی (تیم‌ها) وجود داشت |
 
 ### Domain Component ها
 

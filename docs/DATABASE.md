@@ -14,10 +14,23 @@ PostgreSQL 17 + Prisma 7.
 | `Permission` | ۳ | کاتالوگ مجوزها، همگام با کد |
 | `UserRole` | ۳ | انتساب نقش — چند نقش برای یک کاربر مجاز است |
 | `RolePermission` | ۳ | مجوزهای هر نقش |
+| `Sport` | ۴ | رشته ورزشی |
+| `AgeGroup` | ۴ | رده سنی — بازه سنی، نه سال تولد |
+| `Season` | ۴ | فصل؛ `startYear` مبنای رده سنی است |
+| `School` | ۴ | مدرسه ورزشی |
+| `Team` | ۴ | تیم؛ به فصل وابسته نیست |
 
-Migration ها: `20260915085940_identity_user_and_otp` · `20260915092307_authorization_roles_and_permissions`
+Migration ها: `20260915085940_identity_user_and_otp` · `20260915092307_authorization_roles_and_permissions` · `20260915093922_academy_structure`
 
-Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey`
+Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus`
+
+### چرا `AgeGroup` سال تولد ذخیره نمی‌کند
+
+سال‌های تولد مجاز هر فصل تغییر می‌کنند. ذخیره‌کردنشان یعنی هر تابستان همه رده‌ها دستی به‌روزرسانی شوند و هر رکوردی که جا بماند بی‌صدا غلط شود. بازه سنی ثابت است؛ سال تولد از روی فصل محاسبه می‌شود (docs/BUSINESS_RULES.md §4).
+
+### چرا `Team` به `Season` وصل نیست
+
+«فوتبال U14» از سالی به سال بعد همان تیم است. اگر تیم فصل داشت، تاریخچه هر تیم هر تابستان دو شاخه می‌شد. فصل روی **عضویت** است، نه روی تیم.
 
 ### چرا `UserRole` یک جدول است
 
