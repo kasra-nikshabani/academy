@@ -83,11 +83,14 @@ app/
     auth/otp/verify    ✅
     auth/logout        ✅
     me/route.ts        ✅
+    users/route.ts     ✅ نیازمند user:read
+    roles/route.ts     ✅ نیازمند role:read
   style-guide/         ✅ مرجع داخلی Design System
 
 components/
   ui/                  ✅ ۳۰ کامپوننت پایه + JalaliCalendar + DatePicker
   states/              ✅ EmptyState، ErrorState، Skeletonها
+  auth/                ✅ Can (پنهان‌سازی UI)
   layout/              ✅ PageHeader (Navigation در فازهای بعد)
   charts/              Phase 14
 
@@ -98,7 +101,7 @@ lib/
   env.ts               ✅ Env با Zod اعتبارسنجی می‌شود
   errors/              ✅ AppError و کدهای خطا
   logger/              ✅ Logger مرکزی با Redaction
-  permissions/         Phase 3
+  permissions/         ✅ کاتالوگ، نقش‌ها، enforce، Scope
   repositories/        ✅ ساختار + health.repository
   services/            ✅ ساختار + health.service
   storage/             ✅ Interface (پیاده‌سازی Phase 18)
@@ -146,6 +149,21 @@ docs/
 | کاربر در هر درخواست از دیتابیس خوانده می‌شود | Block شدن حساب باید بلافاصله اثر کند، نه پس از انقضای Token |
 | `middleware.ts` فقط Redirect است | روی Edge فقط امضای Token دیده می‌شود؛ کنترل دسترسی واقعی در Service و صفحه است |
 | شماره موبایل در Cookie، نه در URL | شماره در URL وارد History، لاگ سرور و هدر Referrer می‌شود |
+
+## 6.3 تصمیم‌های Phase 3
+
+| تصمیم | دلیل |
+|---|---|
+| کاتالوگ مجوزها در **کد**، نگاشت نقش→مجوز در **دیتابیس** | غلط تایپی در نام مجوز باید خطای کامپایل باشد، نه یک درخواست بی‌صدا رد شده؛ اما مدیر باید بتواند بدون Deploy مجوز نقشی را تغییر دهد |
+| `UserRole` جدول جدا، نه ستون روی `User` | یک نفر می‌تواند هم‌زمان مربی و ولی باشد |
+| نقش‌ها داخل JWT نیستند | گرفتن نقش از کاربر باید بلافاصله اثر کند |
+| Permission در Service، نه Route Handler | Service از چند مسیر صدا زده می‌شود؛ کنترل روی یک مسیر یعنی دور زدن از بقیه |
+| Scope تیم/فرزند به Phase 5 موکول شد | مدل‌هایش وجود ندارند؛ قرارداد `ScopeFilter` الان تعریف شد تا بعداً وصله نشود |
+| سقف ساعتی IP از ۲۰ به ۲۰۰ افزایش یافت | خانواده‌های پشت NAT مشترک با سقف تنگ قفل می‌شدند (docs/SECURITY.md) |
+
+### یک نکته عملیاتی
+
+پس از هر `prisma migrate` + `generate`، **Dev Server را دوباره راه‌اندازی کنید.** فرایند در حال اجرا نسخه قبلی Prisma Client را در حافظه نگه می‌دارد و مدل‌های جدید به‌صورت `undefined` ظاهر می‌شوند. این در Phase 2 و Phase 3 هر دو بار اتفاق افتاد.
 
 ## 7. Runtime
 

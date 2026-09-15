@@ -44,7 +44,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  otpCodes OtpCode[]
+  otpCodes  OtpCode[]
+  userRoles UserRole[]
+  /// Role assignments this user granted to others — kept for audit.
+  grantedRoles UserRole[] @relation("RoleAssignedBy")
 
   @@index([status])
 }
@@ -81,4 +84,94 @@ model OtpCode {
   @@index([mobile, createdAt])
   @@index([expiresAt])
   @@index([userId])
+}
+
+
+// ---------------------------------------------------------------------------
+// Authorization — Phase 3
+//
+// Two independent questions, never collapsed into one:
+//   Permission — may this role perform this kind of action at all?
+//   Scope      — is this particular record within the caller's reach?
+// Scope predicates that depend on teams and families arrive with their models
+// in Phase 5/6; see docs/PERMISSIONS.md.
+// ---------------------------------------------------------------------------
+
+enum RoleKey {
+  ADMIN
+  ACADEMY_MANAGER
+  STAFF
+  MAIN_TEAM_PLAYER
+  SCHOOL_PLAYER
+  PARENT
+}
+
+model Role {
+  id  String  @id @default(cuid())
+  key RoleKey @unique
+  /// Persian label shown in the interface.
+  name        String
+  description String?
+
+  /// System roles are seeded and may not be deleted; the six roles the
+  /// academy is organised around are structural, not user-created data.
+  isSystem Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+}
+
+model Permission {
+  id String @id @default(cuid())
+  /// `resource:action`, e.g. `player:read`. Mirrors lib/permissions/catalogue.ts,
+  /// which is the source of truth; the seed syncs this table to it.
+  key String @unique
+
+  resource    String
+  action      String
+  description String?
+
+  createdAt DateTime @default(now())
+
+  rolePermissions RolePermission[]
+
+  @@index([resource])
+}
+
+model UserRole {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  assignedAt DateTime @default(now())
+  /// Who granted this role. Null for seeded assignments.
+  assignedById String?
+  assignedBy   User?   @relation("RoleAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  /// One user may hold several roles — a coach who is also a player's parent
+  /// is ordinary in an academy — but never the same role twice.
+  @@unique([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  id String @id @default(cuid())
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([roleId, permissionId])
+  @@index([permissionId])
 }

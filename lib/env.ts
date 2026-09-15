@@ -33,8 +33,17 @@ const serverEnvSchema = z.object({
   OTP_RESEND_COOLDOWN_SECONDS: z.coerce.number().int().positive().default(60),
   /** Codes one mobile number may request per hour. */
   OTP_MAX_PER_HOUR: z.coerce.number().int().positive().default(5),
-  /** Codes one source address may request per hour, across all numbers. */
-  OTP_MAX_PER_IP_PER_HOUR: z.coerce.number().int().positive().default(20),
+  /**
+   * Codes one source address may request per hour, across all numbers.
+   *
+   * Deliberately far looser than the per-number cap. A club training session,
+   * a school computer room, or any household behind carrier-grade NAT puts
+   * many legitimate parents and players on one public address — a tight cap
+   * there locks out real families while doing little against an attacker, who
+   * can change address cheaply. The per-number cap is the precise control;
+   * this one only catches bulk abuse from a single source.
+   */
+  OTP_MAX_PER_IP_PER_HOUR: z.coerce.number().int().positive().default(200),
   SMS_PROVIDER: z.enum(["console"]).default("console"),
 
   // --- storage (consumed from Phase 18) ---

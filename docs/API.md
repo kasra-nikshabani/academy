@@ -2,7 +2,7 @@
 
 Base path: `/api/v1`
 
-> وضعیت: Health و Authentication پیاده‌سازی شده‌اند. بقیه مسیرها در فازهای بعدی اضافه می‌شوند.
+> وضعیت: Health، Authentication و Authorization پیاده‌سازی شده‌اند. بقیه مسیرها در فازهای بعدی اضافه می‌شوند.
 
 ## 1. قرارداد پاسخ
 
@@ -157,15 +157,53 @@ Cookie را پاک می‌کند. چه کاربر وارد شده باشد چه 
 }
 ```
 
-نقش‌ها و مجوزها در Phase 3 به این پاسخ اضافه می‌شوند.
+```json
+{
+  "roles": [{ "key": "STAFF", "name": "کادر فنی" }],
+  "permissions": [{ "key": "training:write", "description": "…" }]
+}
+```
+
+مجوزها برگردانده می‌شوند تا رابط کاربری بتواند چیزهایی را که کاربر نمی‌تواند استفاده کند پنهان کند. این فقط نمایش است — همان بررسی‌ها در لایه Service دوباره اجرا می‌شوند.
 
 خطا: `UNAUTHENTICATED` (۴۰۱)
+
+### `GET /api/v1/users`
+
+نیازمند مجوز `user:read`. صفحه‌بندی‌شده.
+
+```
+GET /api/v1/users?page=1&pageSize=20&search=0912
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "…",
+      "mobile": "09120000003",
+      "status": "ACTIVE",
+      "lastLoginAt": "…",
+      "roles": ["STAFF"]
+    }
+  ],
+  "meta": { "page": 1, "pageSize": 20, "total": 8, "totalPages": 1 }
+}
+```
+
+خطاها: `FORBIDDEN` (۴۰۳) · `VALIDATION_ERROR` (۴۲۲ — مثلاً `pageSize` بیش از ۱۰۰)
+
+### `GET /api/v1/roles`
+
+نیازمند مجوز `role:read`. فهرست نقش‌ها به‌همراه مجوزهایشان.
 
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `sports`، `age-groups`، `seasons`، `schools`، `teams` | Phase 4 |
+| `users/:id/roles` (انتساب نقش) | Phase 4 |
 | `players`، `guardians`، `staff` | Phase 5 |
 | `enrollments`، `memberships` | Phase 6 |
 | `training`، `attendance` | Phase 8–9 |

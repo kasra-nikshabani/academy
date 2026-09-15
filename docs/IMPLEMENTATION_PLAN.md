@@ -9,8 +9,8 @@
 | 0 | Foundation | ✅ تکمیل |
 | 1 | Design System | ✅ تکمیل |
 | 2 | Authentication (Mobile + OTP) | ✅ تکمیل |
-| 3 | RBAC + Scope | ⏳ بعدی |
-| 4 | Academy Core (Sport/AgeGroup/Season/School/Team) | ⛔ |
+| 3 | RBAC + Scope | ✅ تکمیل |
+| 4 | Academy Core (Sport/AgeGroup/Season/School/Team) | ⏳ بعدی |
 | 5 | Players / Guardians / Staff | ⛔ |
 | 6 | Enrollment | ⛔ |
 | 7 | Player Journey | ⛔ |
@@ -76,9 +76,27 @@
 
 **خارج از محدوده (عمدی):** نقش و مجوز (Phase 3)، پنل‌های نقش‌محور (Phase 16)، Provider واقعی پیامک.
 
-## Phase 3 — RBAC + Scope ⏳
+## Phase 3 — RBAC + Scope ✅
 
-مدل‌های `Role`، `Permission`، `UserRole`، `RolePermission`؛ کاتالوگ مجوزها؛ `requirePermission`؛ `assertTeamScope` و `assertChildScope`؛ افزودن نقش‌ها به `GET /api/v1/me`؛ تست‌های نفوذ Scope.
+**تحویل‌شده:**
+
+- `Role`، `Permission`، `UserRole`، `RolePermission` + Migration دوم
+- کاتالوگ ۳۶ مجوز در کد، همگام‌شده با دیتابیس توسط Seed
+- شش نقش سیستمی با مجوزهای پیش‌فرض
+- **چند نقش برای یک کاربر** — Seed یک مربی که ولی هم هست دارد
+- `requirePermission` / `requireRole` / `assertSelf` در لایه Service
+- نقش‌ها و مجوزها در `GET /api/v1/me`
+- دو Endpoint محافظت‌شده به‌عنوان اثبات: `GET /api/v1/users` (صفحه‌بندی‌شده) و `GET /api/v1/roles`
+- `<Can>` برای پنهان‌سازی UI، با تست E2E که اثبات می‌کند پنهان‌سازی کنترل امنیتی نیست
+- ۱۷ تست واحد و ۱۵ تست Integration جدید (جمعاً ۱۱۶) + ۹ تست E2E جدید (جمعاً ۲۶)
+
+**خارج از محدوده — و دلیلش:**
+
+محدودسازی مربی به تیم‌هایش و ولی به فرزندانش به `StaffTeam` و `PlayerGuardian` نیاز دارد که تا Phase 5 وجود ندارند. قرارداد آن‌ها (`ScopeFilter`) الان تعریف شده تا بعداً وصله نشود، اما خود Predicate ها همراه با مدل‌هایشان می‌آیند. تا آن زمان هیچ Endpoint تیم‌محوری وجود ندارد که بدون Scope رها شده باشد.
+
+## Phase 4 — Academy Core ⏳
+
+`Sport`، `AgeGroup`، `Season`، `School`، `Team` + CRUD و صفحات مدیریتی. اولین جایی که Scope تیم‌محور معنا پیدا می‌کند.
 
 ## فازهای ۴ تا ۲۲
 
@@ -89,7 +107,7 @@
 تا پایان Phase 21 این ده مسیر باید تست خودکار داشته باشند:
 
 1. ورود با OTP ✅
-2. دسترسی بر اساس نقش
+2. دسترسی بر اساس نقش ✅
 3. Scope کادر فنی
 4. ایجاد بازیکن
 5. ثبت‌نام در مدرسه
