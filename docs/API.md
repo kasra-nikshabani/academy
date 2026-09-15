@@ -198,12 +198,40 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 نیازمند مجوز `role:read`. فهرست نقش‌ها به‌همراه مجوزهایشان.
 
+### ساختار آکادمی
+
+همه این مسیرها برای خواندن به `academy:read` و برای نوشتن به `academy:write` نیاز دارند.
+
+| مسیر | متدها |
+|---|---|
+| `/api/v1/sports` | `GET` `POST` |
+| `/api/v1/sports/:id` | `GET` `PATCH` `DELETE` |
+| `/api/v1/age-groups` | `GET` `POST` — فیلتر `?sportId=` |
+| `/api/v1/age-groups/:id` | `GET` `PATCH` `DELETE` |
+| `/api/v1/seasons` | `GET` `POST` |
+| `/api/v1/seasons/:id` | `PATCH` — با `?activate=true` فصل را جاری می‌کند |
+| `/api/v1/schools` | `GET` `POST` — فیلتر `?sportId=` |
+| `/api/v1/schools/:id` | `GET` `PATCH` `DELETE` |
+| `/api/v1/teams` | `GET` `POST` — صفحه‌بندی‌شده، فیلتر `?sportId=` `?ageGroupId=` |
+| `/api/v1/teams/:id` | `GET` `PATCH` `DELETE` |
+
+`?includeInactive=true` رکوردهای غیرفعال را هم برمی‌گرداند.
+
+> **`DELETE` غیرفعال می‌کند، حذف نمی‌کند.** ساختار آکادمی توسط ثبت‌نام‌ها، جلسات تمرین و سوابق مسابقه ارجاع می‌شود؛ حذف یک تیم آن تاریخچه را با خودش می‌برد (CLAUDE.md §2).
+
+پاسخ رده سنی و تیم شامل `birthYears` است که از روی **فصل جاری** محاسبه می‌شود، نه از رکورد خوانده می‌شود:
+
+```json
+{ "birthYears": { "from": 1392, "to": 1393, "label": "متولد ۱۳۹۲ تا ۱۳۹۳" } }
+```
+
+اگر فصل فعالی نباشد، این فیلد `null` است.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
-| `sports`، `age-groups`، `seasons`، `schools`، `teams` | Phase 4 |
-| `users/:id/roles` (انتساب نقش) | Phase 4 |
+| `users/:id/roles` (انتساب نقش) | Phase 5 |
 | `players`، `guardians`، `staff` | Phase 5 |
 | `enrollments`، `memberships` | Phase 6 |
 | `training`، `attendance` | Phase 8–9 |

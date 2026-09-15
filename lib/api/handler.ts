@@ -2,7 +2,9 @@ import type { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
 import {
   type AppError,
+  ConflictError,
   InternalError,
+  NotFoundError,
   RateLimitError,
   ValidationError,
   isAppError,
@@ -22,6 +24,29 @@ function toFieldDetails(error: ZodError): Array<{
   }));
 }
 
+/**
+ * Prisma surfaces constraint violations as generic client errors. Left alone
+ * they become 500s, which tells the caller nothing and hides an ordinary
+ * conflict (a duplicate slug) behind "something went wrong".
+ */
+function fromPrismaError(error: unknown): AppError | null {
+  if (typeof error !== "object" || error === null) return null;
+  const code = (error as { code?: unknown }).code;
+
+  switch (code) {
+    case "P2002":
+      return new ConflictError("رکوردی با این مشخصات از قبل وجود دارد.");
+    case "P2025":
+      return new NotFoundError();
+    case "P2003":
+      return new ConflictError(
+        "این رکورد به رکوردهای دیگری وابسته است و قابل تغییر نیست.",
+      );
+    default:
+      return null;
+  }
+}
+
 export function toAppError(error: unknown): AppError {
   if (isAppError(error)) return error;
 
@@ -29,7 +54,7 @@ export function toAppError(error: unknown): AppError {
     return new ValidationError(undefined, toFieldDetails(error));
   }
 
-  return new InternalError();
+  return fromPrismaError(error) ?? new InternalError();
 }
 
 function errorResponse(error: AppError): NextResponse<ApiErrorBody> {

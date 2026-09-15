@@ -10,8 +10,8 @@
 | 1 | Design System | ✅ تکمیل |
 | 2 | Authentication (Mobile + OTP) | ✅ تکمیل |
 | 3 | RBAC + Scope | ✅ تکمیل |
-| 4 | Academy Core (Sport/AgeGroup/Season/School/Team) | ⏳ بعدی |
-| 5 | Players / Guardians / Staff | ⛔ |
+| 4 | Academy Core (Sport/AgeGroup/Season/School/Team) | ✅ تکمیل |
+| 5 | Players / Guardians / Staff | ⏳ بعدی |
 | 6 | Enrollment | ⛔ |
 | 7 | Player Journey | ⛔ |
 | 8 | Training | ⛔ |
@@ -94,9 +94,26 @@
 
 محدودسازی مربی به تیم‌هایش و ولی به فرزندانش به `StaffTeam` و `PlayerGuardian` نیاز دارد که تا Phase 5 وجود ندارند. قرارداد آن‌ها (`ScopeFilter`) الان تعریف شده تا بعداً وصله نشود، اما خود Predicate ها همراه با مدل‌هایشان می‌آیند. تا آن زمان هیچ Endpoint تیم‌محوری وجود ندارد که بدون Scope رها شده باشد.
 
-## Phase 4 — Academy Core ⏳
+## Phase 4 — Academy Core ✅
 
-`Sport`، `AgeGroup`، `Season`، `School`، `Team` + CRUD و صفحات مدیریتی. اولین جایی که Scope تیم‌محور معنا پیدا می‌کند.
+**تحویل‌شده:**
+
+- `Sport`، `AgeGroup`، `Season`، `School`، `Team` + Migration سوم
+- **منطق رده سنی بر اساس سال تولد** — بازه سنی ذخیره می‌شود، سال‌های تولد مجاز از روی فصل جاری محاسبه می‌شوند
+- فقط یک فصل `ACTIVE` در هر زمان، با Transaction
+- CRUD کامل برای هر پنج موجودیت با `academy:read` / `academy:write`
+- `DELETE` غیرفعال می‌کند، حذف نمی‌کند
+- نگاشت خطاهای Prisma به Envelope استاندارد (`P2002` → `CONFLICT` به‌جای ۵۰۰)
+- پوسته پنل با Sidebar مشکی و Navigation نقش‌محور
+- **اولین `DataTable` واقعی** (از Phase 1 به تعویق افتاده بود) + پنج صفحه مدیریتی
+- Seed: دو رشته، هفت رده سنی، دو فصل، یک مدرسه، پنج تیم
+- ۲۴ تست جدید (جمعاً ۱۴۰) + ۸ تست E2E جدید (جمعاً ۳۴)
+
+**خارج از محدوده (عمدی):** فرم‌های ایجاد/ویرایش در UI — API کامل است و تست دارد، اما ساخت فرم برای هر پنج موجودیت بدون داشتن بازیکن، زودهنگام بود. صفحات فعلاً فقط نمایشی‌اند.
+
+## Phase 5 — Players / Guardians / Staff ⏳
+
+`Person`، `Player`، `Guardian`، `PlayerGuardian`، `Staff`، `StaffTeam`. اولین فازی که **Scope تیم‌محور و فرزندمحور** قابل پیاده‌سازی می‌شود.
 
 ## فازهای ۴ تا ۲۲
 
@@ -121,7 +138,6 @@
 
 | موضوع | لازم تا |
 |---|---|
-| مبنای محاسبه رده سنی | Phase 6 |
 | Provider پیامک واقعی | قبل از Production |
 | پالت نهایی نمودارها | Phase 14 |
 | زمان افزودن Recharts | Phase 14 |
