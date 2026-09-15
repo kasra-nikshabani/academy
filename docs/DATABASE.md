@@ -10,10 +10,18 @@ PostgreSQL 17 + Prisma 7.
 |---|---|---|
 | `User` | ۲ | حساب کاربری؛ کلید یکتا `mobile` |
 | `OtpCode` | ۲ | کدهای ورود، به‌صورت Hash |
+| `Role` | ۳ | شش نقش سیستمی |
+| `Permission` | ۳ | کاتالوگ مجوزها، همگام با کد |
+| `UserRole` | ۳ | انتساب نقش — چند نقش برای یک کاربر مجاز است |
+| `RolePermission` | ۳ | مجوزهای هر نقش |
 
-Enum ها: `UserStatus` · `OtpPurpose`
+Migration ها: `20260915085940_identity_user_and_otp` · `20260915092307_authorization_roles_and_permissions`
 
-نقش‌ها و مجوزها (`Role`، `Permission`، `UserRole`، `RolePermission`) در Phase 3 اضافه می‌شوند.
+Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey`
+
+### چرا `UserRole` یک جدول است
+
+چون یک نفر می‌تواند هم‌زمان مربی و ولیِ یکی از بازیکنان باشد — حالتی رایج در آکادمی واقعی. یک ستون `role` روی `User` این را غیرممکن می‌کرد.
 
 ### چند تصمیم در مدل `OtpCode`
 

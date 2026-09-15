@@ -16,7 +16,7 @@ vi.mock("@/lib/sms", () => ({
 }));
 
 const { prisma } = await import("@/lib/db");
-const { requestLoginOtp, verifyLoginOtp } =
+const { hashIp, requestLoginOtp, verifyLoginOtp } =
   await import("@/lib/services/auth.service");
 const { verifySessionToken } = await import("@/lib/auth/session");
 const { env } = await import("@/lib/env");
@@ -227,5 +227,44 @@ describe("login: rate limiting", () => {
   it("rate-limits an unknown number too", async () => {
     await requestLoginOtp(UNKNOWN_MOBILE, null);
     await expect(requestLoginOtp(UNKNOWN_MOBILE, null)).rejects.toThrow();
+  });
+
+  /**
+   * The per-source cap catches bulk abuse across many numbers, where the
+   * per-number cap alone would not.
+   */
+  it("caps requests from one source across different numbers", async () => {
+    const ip = "203.0.113.7";
+    const ipHash = hashIp(ip)!;
+    const since = new Date(Date.now() - 30 * 60 * 1000);
+
+    await prisma.otpCode.deleteMany({ where: { ipHash } });
+    await prisma.otpCode.createMany({
+      data: Array.from({ length: env.OTP_MAX_PER_IP_PER_HOUR }, (_, index) => ({
+        mobile: `0912${String(100000 + index).slice(0, 6)}`,
+        codeHash: `filler-${index}`,
+        expiresAt: new Date(Date.now() + 60_000),
+        createdAt: since,
+        ipHash,
+      })),
+    });
+
+    await expect(requestLoginOtp("09121234567", ip)).rejects.toThrow();
+
+    await prisma.otpCode.deleteMany({ where: { ipHash } });
+  });
+
+  it("hashes the source address rather than storing it", async () => {
+    const ip = "198.51.100.42";
+    await requestLoginOtp(ACTIVE_MOBILE, ip);
+
+    const record = await prisma.otpCode.findFirst({
+      where: { mobile: ACTIVE_MOBILE },
+      orderBy: { createdAt: "desc" },
+    });
+
+    expect(record?.ipHash).not.toBe(ip);
+    expect(record?.ipHash).toBe(hashIp(ip));
+    expect(record?.ipHash).toMatch(/^[0-9a-f]{64}$/);
   });
 });

@@ -66,3 +66,44 @@ export async function plantCodeHash(
     throw new Error(`no pending code for ${mobile}`);
   }
 }
+
+/**
+ * Creates a throwaway account holding the given roles.
+ *
+ * Tests run in parallel, and OTP rate limits are per mobile number — two tests
+ * signing in as the same seeded account race each other into a cooldown. Each
+ * test gets its own number instead, so nothing is shared between workers.
+ */
+export async function createUserWithRoles(
+  mobile: string,
+  roleKeys: readonly string[],
+): Promise<void> {
+  await withClient(async (client) => {
+    await client.query(`DELETE FROM "OtpCode" WHERE "mobile" = $1`, [mobile]);
+    await client.query(
+      `INSERT INTO "User" ("id", "mobile", "status", "createdAt", "updatedAt")
+       VALUES (gen_random_uuid()::text, $1, 'ACTIVE', now(), now())
+       ON CONFLICT ("mobile") DO UPDATE SET "status" = 'ACTIVE'`,
+      [mobile],
+    );
+
+    const { rows } = await client.query<{ id: string }>(
+      `SELECT "id" FROM "User" WHERE "mobile" = $1`,
+      [mobile],
+    );
+    const userId = rows[0]?.id;
+    if (!userId) throw new Error(`could not create ${mobile}`);
+
+    await client.query(`DELETE FROM "UserRole" WHERE "userId" = $1`, [userId]);
+
+    for (const key of roleKeys) {
+      await client.query(
+        `INSERT INTO "UserRole" ("id", "userId", "roleId", "assignedAt")
+         SELECT gen_random_uuid()::text, $1, r."id", now()
+           FROM "Role" r WHERE r."key" = $2::"RoleKey"
+         ON CONFLICT ("userId", "roleId") DO NOTHING`,
+        [userId, key],
+      );
+    }
+  });
+}
