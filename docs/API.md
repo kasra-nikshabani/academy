@@ -248,12 +248,46 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 > `POST /staff/:id/teams` همان نوشتنی است که به مربی دسترسی به یک تیم می‌دهد، پس `staff:write` می‌خواهد — مربی نباید بتواند محدوده خودش را گسترش دهد.
 
+### ثبت‌نام و عضویت
+
+| مسیر | متدها | مجوز |
+|---|---|---|
+| `/api/v1/enrollments` | `GET` `POST` | `enrollment:read` / `enrollment:write` |
+| `/api/v1/enrollments/:id` | `PATCH` | `enrollment:write` |
+| `/api/v1/memberships` | `POST` | `enrollment:write` |
+| `/api/v1/memberships/:id` | `DELETE` | `enrollment:write` |
+| `/api/v1/teams/:id/roster` | `GET` | `enrollment:read` + Scope تیم |
+| `/api/v1/players/:id/enrollments` | `GET` | `enrollment:read` + Scope بازیکن |
+| `/api/v1/players/:id/memberships` | `GET` | `enrollment:read` + Scope بازیکن |
+
+`POST /memberships` رده سنی را بررسی می‌کند و در صورت ناهم‌خوانی:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_ERROR",
+    "message": "سال تولد بازیکن با رده سنی U14 هم‌خوان نیست.",
+    "details": {
+      "birthYear": 1388,
+      "ageGroup": "U14",
+      "allowed": { "from": 1392, "to": 1393 }
+    }
+  }
+}
+```
+
+با `ageException: true` و نقش `ADMIN` این بررسی نادیده گرفته می‌شود و استثنا روی `notes` عضویت ثبت می‌شود.
+
+`DELETE /memberships/:id?status=RELEASED|INACTIVE` عضویت را پایان می‌دهد؛ ردیف حذف نمی‌شود.
+
+> بدنه JSON نامعتبر یا خالی `VALIDATION_ERROR` (۴۲۲) می‌دهد، نه ۵۰۰.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `users/:id/roles` (انتساب نقش) | Phase 6 |
-| `enrollments`، `memberships` | Phase 6 |
 | `training`، `attendance` | Phase 8–9 |
 | `tryouts`، `applications`، `screening`، `decision` | Phase 10 |
 | `evaluations` | Phase 11 |

@@ -25,10 +25,12 @@ PostgreSQL 17 + Prisma 7.
 | `PlayerGuardian` | ۵ | **همان Scope ولی** — یکتا: `playerId + guardianId` |
 | `Staff` | ۵ | نقش کادر فنی |
 | `StaffTeam` | ۵ | **همان Scope مربی** — یکتا: `staffId + teamId` |
+| `SchoolEnrollment` | ۶ | یکتا: `playerId + schoolId + seasonId` |
+| `TeamMembership` | ۶ | یکتا: `playerId + teamId + seasonId` |
 
-Migration ها: `identity_user_and_otp` · `authorization_roles_and_permissions` · `academy_structure` · `people_and_staff_assignment`
+Migration ها: `identity_user_and_otp` · `authorization_roles_and_permissions` · `academy_structure` · `people_and_staff_assignment` · `enrollment_school_and_team`
 
-Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gender` · `PlayerStatus` · `StaffStatus` · `StaffTeamRole` · `GuardianRelation`
+Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gender` · `PlayerStatus` · `StaffStatus` · `StaffTeamRole` · `GuardianRelation` · `EnrollmentStatus` · `MembershipStatus`
 
 ### چرا `Person` از `Player`/`Guardian`/`Staff` جداست
 
@@ -41,6 +43,10 @@ Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gende
 ### چرا `AgeGroup` سال تولد ذخیره نمی‌کند
 
 سال‌های تولد مجاز هر فصل تغییر می‌کنند. ذخیره‌کردنشان یعنی هر تابستان همه رده‌ها دستی به‌روزرسانی شوند و هر رکوردی که جا بماند بی‌صدا غلط شود. بازه سنی ثابت است؛ سال تولد از روی فصل محاسبه می‌شود (docs/BUSINESS_RULES.md §4).
+
+### چرا `SchoolEnrollment` و `TeamMembership` دو جدول جدا هستند
+
+چون دو رابطه مستقل‌اند. بازیکن می‌تواند هم‌زمان در مدرسه باشد و عضو تیم — و پذیرش در تیم نباید ثبت‌نام مدرسه را پایان دهد (BUSINESS_RULES §2). اگر یک جدول با یک ستون «نوع» بودند، این جدایی خیلی زود از بین می‌رفت.
 
 ### چرا `Team` به `Season` وصل نیست
 

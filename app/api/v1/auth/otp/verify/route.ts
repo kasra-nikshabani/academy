@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, ok } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { setSessionCookie } from "@/lib/auth";
 import { clearPendingLoginMobile } from "@/lib/auth/pending-login";
 import { verifyLoginOtp } from "@/lib/services/auth.service";
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
  * never in the response body, so no script can read it.
  */
 export const POST = apiHandler(async (request: NextRequest) => {
-  const { mobile, code } = verifyOtpSchema.parse(await request.json());
+  const { mobile, code } = verifyOtpSchema.parse(await readJsonBody(request));
   const { token, userId } = await verifyLoginOtp(mobile, code);
 
   await setSessionCookie(token);

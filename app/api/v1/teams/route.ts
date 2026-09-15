@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, created, okPaginated, parsePagination } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { buildPaginationMeta } from "@/lib/api";
 import { requireUser } from "@/lib/auth";
 import { createTeam, listTeams } from "@/lib/services/academy.service";
@@ -26,6 +27,6 @@ export const GET = apiHandler(async (request: NextRequest) => {
 
 export const POST = apiHandler(async (request: NextRequest) => {
   const caller = await requireUser();
-  const input = createTeamSchema.parse(await request.json());
+  const input = createTeamSchema.parse(await readJsonBody(request));
   return created(await createTeam(caller, input));
 });

@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, created, okPaginated, parsePagination } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { requireUser } from "@/lib/auth";
 import { createStaff, listStaff } from "@/lib/services/people.service";
 import { createStaffSchema } from "@/lib/validation/people";
@@ -16,6 +17,6 @@ export const GET = apiHandler(async (request: NextRequest) => {
 
 export const POST = apiHandler(async (request: NextRequest) => {
   const caller = await requireUser();
-  const input = createStaffSchema.parse(await request.json());
+  const input = createStaffSchema.parse(await readJsonBody(request));
   return created(await createStaff(caller, input));
 });

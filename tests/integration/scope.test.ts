@@ -167,12 +167,16 @@ describe("a guardian may only reach their own children", () => {
 });
 
 describe("an administrator is not scoped", () => {
-  it("reaches every player", async () => {
-    const { items } = await listPlayers(admin, { page: 1, pageSize: 100 });
-    const ids = items.map((item) => item.id);
+  it("is not narrowed to any subset", async () => {
+    const scope = await resolveScope(admin);
+    expect(scope.playerIds).toBeNull();
 
-    expect(ids).toContain(ownChildId);
-    expect(ids).toContain(otherChildId);
+    // A null scope means the query is unfiltered, so the total is the whole
+    // table. Asserting on a page of results instead would break as soon as the
+    // table outgrows one page.
+    const { meta } = await listPlayers(admin, { page: 1, pageSize: 1 });
+    const total = await prisma.player.count();
+    expect(meta.total).toBe(total);
   });
 
   it("reaches a single player directly", async () => {

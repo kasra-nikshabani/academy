@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiHandler, created } from "@/lib/api";
+import { readJsonBody } from "@/lib/api/request";
 import { requireUser } from "@/lib/auth";
 import { linkGuardian } from "@/lib/services/people.service";
 import { linkGuardianSchema } from "@/lib/validation/people";
@@ -13,6 +14,6 @@ type Context = { params: Promise<{ id: string }> };
 export const POST = apiHandler(async (request: NextRequest, ctx: Context) => {
   const caller = await requireUser();
   const { id } = await ctx.params;
-  const input = linkGuardianSchema.parse(await request.json());
+  const input = linkGuardianSchema.parse(await readJsonBody(request));
   return created(await linkGuardian(caller, id, input));
 });

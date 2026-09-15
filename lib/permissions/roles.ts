@@ -72,6 +72,9 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       "player:read",
       "guardian:read",
       "staff:read",
+      // Reading the squad, not changing it: moving a player between teams is
+      // a manager's decision (BUSINESS_RULES §3).
+      "enrollment:read",
       "training:read",
       "training:write",
       "attendance:read",
@@ -94,6 +97,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     permissions: [
       "academy:read",
       "player:read",
+      "enrollment:read",
       "training:read",
       "attendance:read",
       "match:read",
@@ -111,6 +115,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     permissions: [
       "academy:read",
       "player:read",
+      "enrollment:read",
       "training:read",
       "attendance:read",
       "notification:read",
@@ -128,6 +133,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       // their own children (see catalogue.ts).
       "player:read",
       "guardian:read",
+      "enrollment:read",
       "training:read",
       "attendance:read",
       "match:read",

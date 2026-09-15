@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Users } from "lucide-react";
 import { PageHeader } from "@/components/layout/page-header";
 import { DataTable } from "@/components/ui/data-table";
@@ -35,7 +36,14 @@ export default async function TeamsPage() {
           {
             id: "name",
             header: "تیم",
-            cell: (team) => <span className="font-medium">{team.name}</span>,
+            cell: (team) => (
+              <Link
+                href={`/dashboard/academy/teams/${team.id}`}
+                className="font-medium underline-offset-4 hover:underline"
+              >
+                {team.name}
+              </Link>
+            ),
           },
           {
             id: "sport",
