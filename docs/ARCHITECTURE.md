@@ -75,8 +75,14 @@ app/
   (public)/            صفحات عمومی            — Phase 1+
   (auth)/              ورود و تأیید OTP        — Phase 2
   dashboard/           پنل‌های نقش‌محور         — Phase 16+
+  (auth)/              ✅ login، verify
+  dashboard/           ✅ صفحه موقت پس از ورود (پنل‌های نقش‌محور: Phase 16)
   api/v1/
-    health/route.ts    ✅ پیاده‌سازی شده
+    health/route.ts    ✅
+    auth/otp/send      ✅
+    auth/otp/verify    ✅
+    auth/logout        ✅
+    me/route.ts        ✅
   style-guide/         ✅ مرجع داخلی Design System
 
 components/
@@ -87,7 +93,7 @@ components/
 
 lib/
   api/                 ✅ Envelope، Pagination، apiHandler
-  auth/                Phase 2
+  auth/                ✅ OTP، Session، کاربر جاری
   db.ts                ✅ Prisma Singleton (pg adapter)
   env.ts               ✅ Env با Zod اعتبارسنجی می‌شود
   errors/              ✅ AppError و کدهای خطا
@@ -96,7 +102,7 @@ lib/
   repositories/        ✅ ساختار + health.repository
   services/            ✅ ساختار + health.service
   storage/             ✅ Interface (پیاده‌سازی Phase 18)
-  validation/          Phase 2+
+  validation/          ✅ قواعد ایران (موبایل، کد ملی)
   utils/               ✅ cn()، تاریخ جلالی، اعداد فارسی
 
 prisma/
@@ -128,6 +134,18 @@ docs/
 | پکیج `cn` دوباره حذف شد | `shadcn add` آن را برمی‌گرداند؛ `pnpm ui:fix` ایمپورت‌ها را به `@/lib/utils` برمی‌گرداند |
 | `Chart` و `DataTable` به تعویق افتادند | بدون مصرف واقعی، طراحی‌شان حدس زدن است (docs/UI_UX.md §9) |
 | `lib/utils.ts` به `lib/utils/` تبدیل شد | جا باز کردن برای `date.ts` و `number.ts` مطابق ساختار CLAUDE.md §5 |
+
+## 6.2 تصمیم‌های Phase 2
+
+| تصمیم | دلیل |
+|---|---|
+| `jose` برای JWT | سبک، بدون وابستگی، و روی Edge Runtime هم کار می‌کند |
+| `tsx` به‌عنوان devDependency | Prisma 7 کلاینت را به‌صورت TypeScript با Import بدون پسوند تولید می‌کند؛ `node --experimental-strip-types` نمی‌تواند آن را Resolve کند |
+| `pg` به‌عنوان devDependency | Playwright با CommonJS اجرا می‌شود و کلاینت ESM پریزما را نمی‌تواند Load کند؛ آماده‌سازی تست‌های E2E با SQL مستقیم انجام می‌شود |
+| Session در Cookie با `httpOnly`، نه `localStorage` | یک باگ XSS نباید بتواند Session را بخواند |
+| کاربر در هر درخواست از دیتابیس خوانده می‌شود | Block شدن حساب باید بلافاصله اثر کند، نه پس از انقضای Token |
+| `middleware.ts` فقط Redirect است | روی Edge فقط امضای Token دیده می‌شود؛ کنترل دسترسی واقعی در Service و صفحه است |
+| شماره موبایل در Cookie، نه در URL | شماره در URL وارد History، لاگ سرور و هدر Referrer می‌شود |
 
 ## 7. Runtime
 

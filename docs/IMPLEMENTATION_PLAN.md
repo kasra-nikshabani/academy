@@ -8,8 +8,8 @@
 |---|---|---|
 | 0 | Foundation | ✅ تکمیل |
 | 1 | Design System | ✅ تکمیل |
-| 2 | Authentication (Mobile + OTP) | ⏳ بعدی |
-| 3 | RBAC + Scope | ⛔ |
+| 2 | Authentication (Mobile + OTP) | ✅ تکمیل |
+| 3 | RBAC + Scope | ⏳ بعدی |
 | 4 | Academy Core (Sport/AgeGroup/Season/School/Team) | ⛔ |
 | 5 | Players / Guardians / Staff | ⛔ |
 | 6 | Enrollment | ⛔ |
@@ -60,15 +60,25 @@
 
 **خارج از محدوده (عمدی):** `Chart` و Recharts (Phase 14)، `DataTable` (Phase 5)، Navigation نقش‌محور (Phase 3+).
 
-## Phase 2 — Authentication
+## Phase 2 — Authentication ✅
 
-مدل‌های `User` و `OtpCode`، اولین Migration، ارسال/تأیید OTP، Session با JWT (`jose`) در Cookie با `httpOnly`، Rate Limiting، صفحات `/login` و `/verify`، `GET /api/v1/me`.
+**تحویل‌شده:**
 
-**پیش‌نیاز تصمیم:** قواعد اعتبارسنجی موبایل و کد ملی (`docs/BUSINESS_RULES.md` §10).
+- مدل‌های `User` و `OtpCode` + اولین Migration
+- قواعد اعتبارسنجی ایران: موبایل و کد ملی با رقم کنترلی (`docs/BUSINESS_RULES.md` §10)
+- کد OTP با `HMAC-SHA256` ذخیره می‌شود، مصرف یک‌باره، سقف تلاش، Cooldown و سقف ساعتی برای شماره و IP
+- پاسخ یکسان برای شماره‌های بدون حساب، تا عضویت افراد قابل شناسایی نباشد
+- Session با JWT (`jose`) در Cookie با `httpOnly`؛ کاربر در هر درخواست از دیتابیس خوانده می‌شود
+- صفحات `/login` و `/verify` و یک `/dashboard` موقت
+- `GET /api/v1/me` · `POST /api/v1/auth/logout`
+- Seed با شش حساب ساختگی
+- ۲۹ تست جدید (جمعاً ۸۰) + ۷ تست E2E جدید (جمعاً ۱۷)
 
-## Phase 3 — RBAC + Scope
+**خارج از محدوده (عمدی):** نقش و مجوز (Phase 3)، پنل‌های نقش‌محور (Phase 16)، Provider واقعی پیامک.
 
-کاتالوگ مجوزها، `requirePermission`، `assertTeamScope`/`assertChildScope`، تست‌های نفوذ Scope.
+## Phase 3 — RBAC + Scope ⏳
+
+مدل‌های `Role`، `Permission`، `UserRole`، `RolePermission`؛ کاتالوگ مجوزها؛ `requirePermission`؛ `assertTeamScope` و `assertChildScope`؛ افزودن نقش‌ها به `GET /api/v1/me`؛ تست‌های نفوذ Scope.
 
 ## فازهای ۴ تا ۲۲
 
@@ -78,7 +88,7 @@
 
 تا پایان Phase 21 این ده مسیر باید تست خودکار داشته باشند:
 
-1. ورود با OTP
+1. ورود با OTP ✅
 2. دسترسی بر اساس نقش
 3. Scope کادر فنی
 4. ایجاد بازیکن
@@ -94,7 +104,6 @@
 | موضوع | لازم تا |
 |---|---|
 | مبنای محاسبه رده سنی | Phase 6 |
-| قواعد اعتبارسنجی موبایل و کد ملی | Phase 2 |
 | Provider پیامک واقعی | قبل از Production |
 | پالت نهایی نمودارها | Phase 14 |
 | زمان افزودن Recharts | Phase 14 |

@@ -1,12 +1,8 @@
 // SEPahan Academy OS — Prisma schema
 //
-// Phase 0 establishes connectivity and the migration pipeline only.
-// Domain models (Identity, People, Academy, …) are introduced from Phase 2
-// onward, per docs/IMPLEMENTATION_PLAN.md — no throwaway models are created here.
-//
-// Note: Prisma 7 no longer accepts `url` inside `datasource`. The connection
-// string is supplied by prisma7.config.ts (CLI) and by the pg driver adapter
-// in lib/db.ts (runtime).
+// Prisma 7 no longer accepts `url` inside `datasource`. The connection string
+// comes from prisma7.config.ts (CLI) and from the pg driver adapter in
+// lib/db.ts (runtime).
 
 generator client {
   provider = "prisma-client"
@@ -15,4 +11,74 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Identity — Phase 2
+// Roles and permissions arrive in Phase 3; this phase answers "who are you",
+// not "what may you do".
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  BLOCKED
+}
+
+enum OtpPurpose {
+  /// Signing in to an existing account.
+  LOGIN
+  /// Public tryout registration, where no account exists yet (Phase 10).
+  TRYOUT_REGISTRATION
+}
+
+model User {
+  id     String     @id @default(cuid())
+  /// Normalised to `09XXXXXXXXX` before it ever reaches the database.
+  mobile String     @unique
+  status UserStatus @default(ACTIVE)
+
+  /// Set on every successful OTP verification.
+  lastLoginAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  otpCodes OtpCode[]
+
+  @@index([status])
+}
+
+model OtpCode {
+  id String @id @default(cuid())
+
+  /// Kept on the row itself: a code may be requested for a number that has no
+  /// account, and the rate limiter counts by number regardless of account.
+  mobile  String
+  purpose OtpPurpose @default(LOGIN)
+
+  /// HMAC-SHA256 of the code, keyed with AUTH_SECRET and bound to the mobile
+  /// number. The plaintext code is never stored, logged, or returned.
+  codeHash String
+
+  expiresAt  DateTime
+  /// Set the moment a code is accepted — a consumed code cannot be replayed.
+  consumedAt DateTime?
+  /// Wrong guesses against this code; the code dies once the cap is reached.
+  attempts   Int       @default(0)
+
+  /// SHA-256 of the requesting IP. Enough to rate-limit a source without
+  /// keeping an address that identifies a child's household.
+  ipHash String?
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  /// Drives both "is there a live code for this number" and the per-number
+  /// rate limit window.
+  @@index([mobile, createdAt])
+  @@index([expiresAt])
+  @@index([userId])
 }

@@ -123,9 +123,18 @@ function Swatch({ token }: { token: string }) {
   );
 }
 
+/**
+ * A fixed reference instant rather than `new Date()`.
+ *
+ * The server and the client would otherwise format two different moments and
+ * React would report a hydration mismatch — and a style guide is about showing
+ * the *formats*, so a stable date also keeps the page diff-able between runs.
+ */
+const REFERENCE_DATE = new Date("2026-09-15T12:15:00Z");
+
 export function StyleGuideView() {
-  const [date, setDate] = React.useState<Date | undefined>(new Date());
-  const now = React.useMemo(() => new Date(), []);
+  const [date, setDate] = React.useState<Date | undefined>(REFERENCE_DATE);
+  const now = REFERENCE_DATE;
 
   return (
     <div className="space-y-10">

@@ -1,3 +1,6 @@
+// Test setup talks to the database and signs OTP hashes, so it needs the
+// same environment the app runs with.
+import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;

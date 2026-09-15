@@ -2,7 +2,7 @@
 
 Base path: `/api/v1`
 
-> وضعیت: فقط `GET /api/v1/health` پیاده‌سازی شده است. بقیه مسیرها در فازهای بعدی اضافه می‌شوند.
+> وضعیت: Health و Authentication پیاده‌سازی شده‌اند. بقیه مسیرها در فازهای بعدی اضافه می‌شوند.
 
 ## 1. قرارداد پاسخ
 
@@ -102,11 +102,69 @@ Base path: `/api/v1`
 
 اگر دیتابیس در دسترس نباشد، پاسخ همچنان ۲۰۰ است اما `status` برابر `degraded` و `database` برابر `down` می‌شود — تا Orchestrator بتواند دلیل را بخواند.
 
+### `POST /api/v1/auth/otp/send`
+
+بدون احراز هویت. درخواست کد ورود.
+
+```json
+{ "mobile": "09123456789" }
+```
+
+پاسخ:
+
+```json
+{
+  "success": true,
+  "data": { "sent": true, "cooldownSeconds": 60, "expiresInSeconds": 120 }
+}
+```
+
+**پاسخ برای شماره‌ای که حساب ندارد دقیقاً همین است.** پیامکی ارسال نمی‌شود، اما رکورد ثبت می‌شود تا Rate Limit یکسان اعمال شود. هدف این است که کسی نتواند با آزمون‌وخطا بفهمد کدام شماره عضو آکادمی است.
+
+کد تأیید هرگز در پاسخ برنمی‌گردد.
+
+خطاها: `VALIDATION_ERROR` (۴۲۲) · `RATE_LIMITED` (۴۲۹ با هدر `Retry-After`)
+
+### `POST /api/v1/auth/otp/verify`
+
+بدون احراز هویت. تبدیل کد به Session.
+
+```json
+{ "mobile": "09123456789", "code": "123456" }
+```
+
+پاسخ موفق `{ "success": true, "data": { "userId": "…" } }` و Session به‌صورت Cookie با `httpOnly` ست می‌شود. Token هرگز در Body پاسخ نیست.
+
+**همه حالت‌های شکست یک خطای یکسان می‌دهند** (`UNAUTHENTICATED`): کد اشتباه، کد منقضی، کد مصرف‌شده، عبور از سقف تلاش، و شماره‌ای که اصلاً کد نگرفته. تفکیک آن‌ها راه شناسایی اعضا را باز می‌کند.
+
+### `POST /api/v1/auth/logout`
+
+Cookie را پاک می‌کند. چه کاربر وارد شده باشد چه نه، موفق برمی‌گردد.
+
+### `GET /api/v1/me`
+
+نیازمند Session.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "…",
+    "mobile": "09123456789",
+    "status": "ACTIVE",
+    "lastLoginAt": "2026-09-15T08:00:00.000Z"
+  }
+}
+```
+
+نقش‌ها و مجوزها در Phase 3 به این پاسخ اضافه می‌شوند.
+
+خطا: `UNAUTHENTICATED` (۴۰۱)
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
-| `auth/otp/send`، `auth/otp/verify`، `me` | Phase 2 |
 | `sports`، `age-groups`، `seasons`، `schools`، `teams` | Phase 4 |
 | `players`، `guardians`، `staff` | Phase 5 |
 | `enrollments`، `memberships` | Phase 6 |
