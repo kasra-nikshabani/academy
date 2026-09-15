@@ -80,7 +80,16 @@ feat:  fix:  refactor:  test:  docs:  chore:
 
 ده سناریوی اجباری E2E در [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) فهرست شده‌اند.
 
-## 7. وابستگی جدید
+## 7. افزودن کامپوننت shadcn
+
+```bash
+pnpm dlx shadcn@4.21.0 add <component>
+pnpm ui:fix
+```
+
+قدم دوم اجباری است: `shadcn add` کامپوننت را با `import { cn } from "cn"` می‌نویسد و یک Micro-package را به‌عنوان وابستگی Runtime برمی‌گرداند. `pnpm ui:fix` ایمپورت‌ها را به `@/lib/utils` برمی‌گرداند. اگر پکیج `cn` دوباره در `package.json` ظاهر شد، حذفش کنید.
+
+## 8. وابستگی جدید
 
 قبل از افزودن هر Package:
 

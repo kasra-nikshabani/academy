@@ -2,7 +2,9 @@
 
 سامانه مدیریت آکادمی باشگاه فولاد مبارکه سپاهان — چندرشته‌ای، چند رده سنی، RTL و Production-Grade.
 
-> **وضعیت فعلی:** Phase 0 (Foundation) تکمیل شده است. هنوز هیچ Domain Model، احراز هویت یا پنل کاربری پیاده‌سازی نشده.
+> **وضعیت فعلی:** Phase 0 (Foundation) و Phase 1 (Design System) تکمیل شده‌اند.
+> Design System به‌صورت زنده در `/style-guide` قابل مشاهده است.
+> هنوز هیچ Domain Model، احراز هویت یا پنل کاربری پیاده‌سازی نشده.
 > نقشه راه در [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Stack
@@ -43,6 +45,8 @@ pnpm dev                 # http://localhost:3200
 curl http://localhost:3200/api/v1/health
 ```
 
+مرجع Design System: <http://localhost:3200/style-guide>
+
 ## دستورها
 
 | دستور | کار |
@@ -52,6 +56,7 @@ curl http://localhost:3200/api/v1/health
 | `pnpm typecheck` | بررسی TypeScript |
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier |
+| `pnpm ui:fix` | اصلاح ایمپورت‌ها پس از `shadcn add` |
 | `pnpm test` | تست‌های Unit و Integration |
 | `pnpm test:e2e` | تست‌های End-to-End |
 | `pnpm verify` | typecheck + lint + test + build |

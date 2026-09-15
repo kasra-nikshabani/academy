@@ -202,4 +202,14 @@
   table {
     font-variant-numeric: tabular-nums;
   }
+  /* Code and identifiers read left-to-right even inside RTL prose; without the
+     isolation, a token like `--brand` is reordered to `brand--`. */
+  code,
+  kbd,
+  samp,
+  pre {
+    direction: ltr;
+    unicode-bidi: isolate;
+    text-align: start;
+  }
 }

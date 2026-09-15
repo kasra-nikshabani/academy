@@ -31,6 +31,11 @@ Enterprise + Sports Technology. جدی، متراکم در پنل مدیریت،
 
 > **باز:** پالت نهایی نمودارها هنوز Placeholder است. رنگ‌های دسته‌ای/ترتیبی واقعی هنگام ساخت نمودارها (Phase 14/16) طراحی می‌شوند، نه اینجا با حدس.
 
+همه توکن‌ها به‌صورت زنده در `/style-guide` قابل مشاهده‌اند.
+
+### نکته درباره دکمه Destructive
+پیش‌تنظیم `radix-nova` دکمه Destructive را به‌صورت **ملایم** (`bg-destructive/10`) ارائه می‌کند، نه قرمز توپر. این با قاعده کسب‌وکار پروژه سازگار است: تقریباً هیچ‌جا Hard Delete نداریم و عملیات «حذف» در عمل تغییر وضعیت است. اگر در آینده عملیات واقعاً برگشت‌ناپذیری اضافه شد، یک Variant پررنگ‌تر برای آن تعریف می‌شود.
+
 ## 3. RTL
 
 - `<html lang="fa" dir="rtl">` در `app/layout.tsx`
@@ -38,7 +43,41 @@ Enterprise + Sports Technology. جدی، متراکم در پنل مدیریت،
 - در Styling از Logical Property ها استفاده می‌شود (`ms-*`/`me-*`, `start`/`end`)، نه `left`/`right`
 - تست E2E جهت و فونت را بررسی می‌کند: `e2e/smoke.spec.ts`
 
-## 4. تایپوگرافی
+### قاعده Bidi — اجباری
+
+هر مقداری که **شناسه** است و باید چپ‌به‌راست خوانده شود، باید ایزوله شود:
+
+```tsx
+<bdi dir="ltr">{player.mobile}</bdi>
+```
+
+شامل: شماره موبایل، کد ملی، کد بازیکن، ایمیل، شناسه درخواست و هر مقدار لاتین.
+
+بدون این کار، جریان RTL ترتیب گروه‌های رقمی را جابه‌جا می‌کند — مثلاً `0912 345 6789` به‌صورت `6789 345 0912` نمایش داده می‌شود. این باگ در Phase 1 دیده و رفع شد.
+
+عناصر `code`، `kbd`، `samp` و `pre` به‌صورت سراسری در `app/globals.css` ایزوله شده‌اند.
+
+## 4. تاریخ جلالی
+
+تمام تاریخ‌ها در دیتابیس **UTC** ذخیره می‌شوند و فقط در لایه نمایش به جلالی تبدیل می‌شوند (`lib/utils/date.ts`).
+
+دو منبع به‌صورت عمدی استفاده می‌شود:
+
+| کار | ابزار | دلیل |
+|---|---|---|
+| نمایش (نام ماه، روز هفته) | `Intl.DateTimeFormat` با تقویم `persian` | داخل Node و مرورگر هست، بدون وابستگی |
+| محاسبه (طول ماه، ساخت جدول، تبدیل معکوس) | `jalaali-js` | پیاده‌سازی مرجع الگوریتم Borkowski |
+
+`tests/unit/date.test.ts` این دو را در بازه ۵۰ ساله با هم مقایسه می‌کند؛ اگر روزی از هم فاصله بگیرند، Build شکست می‌خورد.
+
+نکات:
+
+- منطقه زمانی همه‌جا `Asia/Tehran` است (`ACADEMY_TIME_ZONE`)
+- تاریخ‌های بدون ساعت (مثل تاریخ تولد) روی **ظهر تهران** لنگر می‌اندازند تا با تغییر Offset به روز قبل نلغزند
+- هفته از **شنبه** شروع می‌شود
+- `formatJalaliLong` رشته را دستی می‌سازد، چون ترتیب خروجی ICU در Node و Chrome یکسان نیست و این رشته، نام قابل‌دسترس هر خانه تقویم است
+
+## 5. تایپوگرافی
 
 Vazirmatn Variable با زیرمجموعه عربی/فارسی، به‌صورت Self-hosted از `@fontsource-variable/vazirmatn`.
 
@@ -46,7 +85,7 @@ Google Fonts عمداً استفاده نشد: اتکای Build و Runtime به 
 
 اعداد در جدول‌ها `tabular-nums` هستند تا ستون‌های عددی هم‌تراز بمانند.
 
-## 5. Breakpoint ها
+## 6. Breakpoint ها
 
 | بازه | دستگاه |
 |---|---|
@@ -62,7 +101,7 @@ Google Fonts عمداً استفاده نشد: اتکای Build و Runtime به 
 | Player | ساده، موبایل‌محور |
 | Parent | ساده‌تر از همه |
 
-## 6. حالت‌های اجباری هر صفحه
+## 7. حالت‌های اجباری هر صفحه
 
 | حالت | الزام |
 |---|---|
@@ -71,14 +110,38 @@ Google Fonts عمداً استفاده نشد: اتکای Build و Runtime به 
 | Error | پیام قابل‌فهم فارسی؛ جزئیات فنی فقط در لاگ |
 | Feedback | Toast برای عملیات موفق، Alert برای هشدار پایدار |
 
-## 7. دسترس‌پذیری
+## 8. دسترس‌پذیری
 
 Keyboard Navigation · HTML معنایی · Label برای هر ورودی · Focus State مشخص · Contrast کافی · Dialog و Table قابل استفاده با Screen Reader · صحت RTL
 
-## 8. Component ها
+## 9. Component ها
 
-Base (Phase 1): Button, Input, Select, DatePicker, Modal, Drawer, Card, Badge, Avatar, Tabs, DataTable, Pagination, Dropdown, Tooltip, Toast, Alert, Dialog, Sheet, Command, Breadcrumb, Progress, Chart, Calendar
+### ✅ پیاده‌سازی‌شده (Phase 1)
 
-Domain (فازهای مربوطه): PlayerCard, PlayerJourney, TeamCard, TrainingCard, TryoutCard, EvaluationCard, AttendanceTable, PerformanceChart, TalentFunnel, StatCard
+Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Switch · Card · Badge · Avatar · Separator · Tabs · Table · Dialog · AlertDialog · Sheet · Drawer · DropdownMenu · Popover · Tooltip · Command · Breadcrumb · Progress · Alert · Skeleton · ScrollArea · Toast (Sonner) · Pagination · Form · InputGroup
 
-DatePicker و Calendar باید تقویم جلالی را پوشش دهند؛ ذخیره‌سازی همچنان UTC است.
+اختصاصی این پروژه:
+
+| کامپوننت | محل |
+|---|---|
+| `JalaliCalendar` | `components/ui/jalali-calendar.tsx` |
+| `DatePicker` | `components/ui/date-picker.tsx` |
+| `EmptyState` | `components/states/empty-state.tsx` |
+| `ErrorState` | `components/states/error-state.tsx` |
+| `TableSkeleton` / `CardGridSkeleton` / `StatCardsSkeleton` | `components/states/loading-state.tsx` |
+| `PageHeader` | `components/layout/page-header.tsx` |
+
+### ⏳ عمداً به تعویق افتاده
+
+| کامپوننت | فاز | دلیل |
+|---|---|---|
+| `Chart` (+ Recharts) | ۱۴ | تا وقتی نموداری وجود ندارد، افزودن Recharts یک وابستگی بدون مصرف است |
+| `DataTable` | ۵ | انتزاع جدول داده بدون یک فهرست واقعی، حدس زدن است |
+
+### Domain Component ها
+
+PlayerCard · PlayerJourney · TeamCard · TrainingCard · TryoutCard · EvaluationCard · AttendanceTable · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+
+### چرا تقویم اختصاصی نوشته شد
+
+`react-day-picker` نصب و سپس حذف شد. آن کتابخانه یک ماه **میلادی** را مدل می‌کند و برای جلالی به یک DateLib کامل سفارشی نیاز دارد — یعنی همان ریاضیات، به‌علاوه پیچیدگی Adapter. نوشتن مستقیم جدول ماه، ترتیب هفته (شنبه‌محور)، سال کبیسه و ارقام فارسی را در یک نقطه درست نگه می‌دارد و کاملاً تست‌پذیر است.
