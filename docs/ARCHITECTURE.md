@@ -77,10 +77,13 @@ app/
   dashboard/           پنل‌های نقش‌محور         — Phase 16+
   api/v1/
     health/route.ts    ✅ پیاده‌سازی شده
+  style-guide/         ✅ مرجع داخلی Design System
 
 components/
-  ui/                  shadcn/ui              — Phase 1
-  layout/ navigation/ charts/ …               — فازهای بعد
+  ui/                  ✅ ۳۰ کامپوننت پایه + JalaliCalendar + DatePicker
+  states/              ✅ EmptyState، ErrorState، Skeletonها
+  layout/              ✅ PageHeader (Navigation در فازهای بعد)
+  charts/              Phase 14
 
 lib/
   api/                 ✅ Envelope، Pagination، apiHandler
@@ -94,7 +97,7 @@ lib/
   services/            ✅ ساختار + health.service
   storage/             ✅ Interface (پیاده‌سازی Phase 18)
   validation/          Phase 2+
-  utils.ts             ✅ cn()
+  utils/               ✅ cn()، تاریخ جلالی، اعداد فارسی
 
 prisma/
   schema.prisma        ✅ Datasource/Generator (بدون Model)
@@ -115,6 +118,16 @@ docs/
 | پورت Dev = **3200** | ۳۰۰۰ و ۳۱۰۰ (Loki) روی این ماشین اشغال‌اند |
 | پورت DB = **5436** | ۵۴۳۲/۵۴۳۳/۵۴۳۴/۵۴۴۲ توسط پروژه‌های دیگر گرفته شده‌اند |
 | هیچ Model در Schema ساخته نشد | Phase 0 فقط زنجیره اتصال را اثبات می‌کند؛ Model ساختگی بدهی فنی است |
+
+## 6.1 تصمیم‌های Phase 1
+
+| تصمیم | دلیل |
+|---|---|
+| `jalaali-js` اضافه شد | تبدیل دوطرفه جلالی↔میلادی؛ نمایش با `Intl` انجام می‌شود که وابستگی ندارد |
+| `react-day-picker` و `date-fns` حذف شدند | تقویم جلالی اختصاصی نوشته شد؛ این دو بدون مصرف باقی می‌ماندند |
+| پکیج `cn` دوباره حذف شد | `shadcn add` آن را برمی‌گرداند؛ `pnpm ui:fix` ایمپورت‌ها را به `@/lib/utils` برمی‌گرداند |
+| `Chart` و `DataTable` به تعویق افتادند | بدون مصرف واقعی، طراحی‌شان حدس زدن است (docs/UI_UX.md §9) |
+| `lib/utils.ts` به `lib/utils/` تبدیل شد | جا باز کردن برای `date.ts` و `number.ts` مطابق ساختار CLAUDE.md §5 |
 
 ## 7. Runtime
 

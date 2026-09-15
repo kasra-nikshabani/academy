@@ -9,10 +9,11 @@ test.describe("Phase 0 smoke", () => {
     await expect(html).toHaveAttribute("lang", "fa");
 
     await expect(
-      page.getByRole("heading", {
-        name: /سامانه مدیریت آکادمی باشگاه فولاد مبارکه سپاهان/,
-      }),
+      page.getByRole("heading", { name: /سامانه مدیریت آکادمی/, level: 1 }),
     ).toBeVisible();
+
+    // The club crest identifies the page.
+    await expect(page.getByText("باشگاه فولاد مبارکه سپاهان")).toBeVisible();
   });
 
   test("home page uses the Vazirmatn typeface", async ({ page }) => {

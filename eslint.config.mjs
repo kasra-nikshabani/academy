@@ -91,7 +91,7 @@ const eslintConfig = defineConfig([
     files: [
       "*.config.{ts,mts,mjs,js}",
       "prisma/**/*.ts",
-      "scripts/**/*.ts",
+      "scripts/**/*.{ts,mjs,js}",
       "tests/**/*.ts",
       "e2e/**/*.ts",
       "**/*.test.ts",

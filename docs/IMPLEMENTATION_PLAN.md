@@ -7,8 +7,8 @@
 | فاز | عنوان | وضعیت |
 |---|---|---|
 | 0 | Foundation | ✅ تکمیل |
-| 1 | Design System | ⏳ بعدی |
-| 2 | Authentication (Mobile + OTP) | ⛔ |
+| 1 | Design System | ✅ تکمیل |
+| 2 | Authentication (Mobile + OTP) | ⏳ بعدی |
 | 3 | RBAC + Scope | ⛔ |
 | 4 | Academy Core (Sport/AgeGroup/Season/School/Team) | ⛔ |
 | 5 | Players / Guardians / Staff | ⛔ |
@@ -46,11 +46,19 @@
 
 **خارج از محدوده (عمدی):** هیچ Domain Model، هیچ Migration، هیچ احراز هویت، هیچ صفحه واقعی.
 
-## Phase 1 — Design System
+## Phase 1 — Design System ✅
 
-Component های Base از shadcn/ui، Layout و Navigation، Skeleton/Empty/Error استاندارد، لایه تبدیل تاریخ جلالی، صفحه Style Guide داخلی.
+**تحویل‌شده:**
 
-**خروجی تصمیم‌محور:** پالت نهایی نمودارها.
+- ۳۰ کامپوننت پایه از shadcn/ui با پیکربندی RTL
+- لایه کامل تاریخ جلالی (`lib/utils/date.ts`) + اعداد فارسی (`lib/utils/number.ts`)
+- `JalaliCalendar` و `DatePicker` اختصاصی — شنبه‌محور، ارقام فارسی، قابل پیمایش با کیبورد
+- `EmptyState`، `ErrorState`، سه الگوی Skeleton، `PageHeader`
+- صفحه `/style-guide` به‌عنوان مرجع زنده Design System
+- ۲۲ تست واحد جدید (جمعاً ۳۹) + ۷ تست E2E جدید (جمعاً ۱۰)
+- رفع دو باگ Bidi که در بازبینی بصری پیدا شدند
+
+**خارج از محدوده (عمدی):** `Chart` و Recharts (Phase 14)، `DataTable` (Phase 5)، Navigation نقش‌محور (Phase 3+).
 
 ## Phase 2 — Authentication
 
@@ -89,4 +97,5 @@ Component های Base از shadcn/ui، Layout و Navigation، Skeleton/Empty/Err
 | قواعد اعتبارسنجی موبایل و کد ملی | Phase 2 |
 | Provider پیامک واقعی | قبل از Production |
 | پالت نهایی نمودارها | Phase 14 |
+| زمان افزودن Recharts | Phase 14 |
 | نصب Docker Compose v2 روی سرور | Phase 22 |
