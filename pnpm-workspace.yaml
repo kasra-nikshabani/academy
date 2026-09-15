@@ -1,0 +1,9 @@
+# Build scripts are blocked by default (pnpm 11). Only explicitly trusted
+# packages may run postinstall scripts.
+allowBuilds:
+  # Prisma downloads/builds its query engine during postinstall — required.
+  "@prisma/engines": true
+  prisma: true
+  # Revisit in Phase 20 (image optimization) if sharp is needed at runtime.
+  sharp: false
+  unrs-resolver: false

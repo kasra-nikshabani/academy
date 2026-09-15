@@ -1,0 +1,59 @@
+# --- dependencies ---
+/node_modules
+.pnp
+.pnp.*
+.yarn/*
+
+# --- next.js ---
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+
+# --- production build ---
+/build
+/dist
+
+# --- environment & secrets (NEVER commit) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+/secrets
+
+# --- testing ---
+/coverage
+/test-results
+/playwright-report
+/blob-report
+/playwright/.cache
+
+# --- prisma generated client ---
+/lib/generated
+
+# --- uploads (local storage provider) ---
+/storage/uploads
+/public/uploads
+
+# --- logs ---
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+/logs
+
+# --- editors / os ---
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.swp
+Thumbs.db
+
+# --- misc ---
+.vercel
+.turbo

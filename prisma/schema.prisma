@@ -1,0 +1,18 @@
+// SEPahan Academy OS — Prisma schema
+//
+// Phase 0 establishes connectivity and the migration pipeline only.
+// Domain models (Identity, People, Academy, …) are introduced from Phase 2
+// onward, per docs/IMPLEMENTATION_PLAN.md — no throwaway models are created here.
+//
+// Note: Prisma 7 no longer accepts `url` inside `datasource`. The connection
+// string is supplied by prisma7.config.ts (CLI) and by the pg driver adapter
+// in lib/db.ts (runtime).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
