@@ -8,7 +8,9 @@ import {
   LayoutDashboard,
   Shapes,
   Trophy,
+  UserCog,
   Users,
+  UsersRound,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -22,7 +24,14 @@ import { cn } from "@/lib/utils";
  * assembled on the server (where permissions are known) and drawn here.
  */
 export type NavIconName =
-  "home" | "sports" | "ageGroups" | "seasons" | "schools" | "teams";
+  | "home"
+  | "sports"
+  | "ageGroups"
+  | "seasons"
+  | "schools"
+  | "teams"
+  | "players"
+  | "staff";
 
 const ICONS: Record<NavIconName, LucideIcon> = {
   home: LayoutDashboard,
@@ -31,6 +40,8 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   seasons: CalendarDays,
   schools: GraduationCap,
   teams: Users,
+  players: UsersRound,
+  staff: UserCog,
 };
 
 export interface NavItem {

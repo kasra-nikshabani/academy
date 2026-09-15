@@ -66,7 +66,7 @@ describe("role resolution", () => {
 
     expect([...both.roles].sort()).toEqual(["PARENT", "STAFF"]);
     expect(both.permissions).toContain("training:write"); // from STAFF
-    expect(both.permissions).toContain("child:read"); // from PARENT
+    expect(both.permissions).toContain("guardian:read"); // from PARENT
     // and nothing beyond the union
     expect(both.permissions).not.toContain("user:write");
     expect(both.permissions).not.toContain("tryout:decide");

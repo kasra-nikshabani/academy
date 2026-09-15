@@ -37,5 +37,21 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     );
   }
 
+  if (hasPermission(user, "player:read")) {
+    items.push({
+      href: "/dashboard/people/players",
+      label: "بازیکنان",
+      icon: "players",
+    });
+  }
+
+  if (hasPermission(user, "staff:read")) {
+    items.push({
+      href: "/dashboard/people/staff",
+      label: "کادر فنی",
+      icon: "staff",
+    });
+  }
+
   return items;
 }

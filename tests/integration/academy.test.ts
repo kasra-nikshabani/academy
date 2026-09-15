@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/db";
 import { findUserAuthorization } from "@/lib/repositories/role.repository";
 import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions/catalogue";
@@ -32,9 +32,33 @@ beforeAll(async () => {
   ]);
 });
 
+/**
+ * Slugs created during a run, removed afterwards.
+ *
+ * Without this the development database accumulates a stray sport per run,
+ * and the counts other tests assert on drift.
+ */
+const createdSlugs: string[] = [];
+
 function uniqueSlug(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  const slug = `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+  createdSlugs.push(slug);
+  return slug;
 }
+
+afterAll(async () => {
+  const sports = await prisma.sport.findMany({
+    where: { slug: { in: createdSlugs } },
+    select: { id: true },
+  });
+  const sportIds = sports.map((sport) => sport.id);
+  if (sportIds.length === 0) return;
+
+  await prisma.team.deleteMany({ where: { sportId: { in: sportIds } } });
+  await prisma.school.deleteMany({ where: { sportId: { in: sportIds } } });
+  await prisma.ageGroup.deleteMany({ where: { sportId: { in: sportIds } } });
+  await prisma.sport.deleteMany({ where: { id: { in: sportIds } } });
+});
 
 describe("reading the structure", () => {
   it("is open to every role that holds academy:read", async () => {

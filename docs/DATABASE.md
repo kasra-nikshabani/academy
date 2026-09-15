@@ -19,10 +19,24 @@ PostgreSQL 17 + Prisma 7.
 | `Season` | ۴ | فصل؛ `startYear` مبنای رده سنی است |
 | `School` | ۴ | مدرسه ورزشی |
 | `Team` | ۴ | تیم؛ به فصل وابسته نیست |
+| `Person` | ۵ | هویت انسان؛ `nationalCode` یکتا |
+| `Player` | ۵ | نقش بازیکن؛ `playerCode` یکتا |
+| `Guardian` | ۵ | نقش ولی |
+| `PlayerGuardian` | ۵ | **همان Scope ولی** — یکتا: `playerId + guardianId` |
+| `Staff` | ۵ | نقش کادر فنی |
+| `StaffTeam` | ۵ | **همان Scope مربی** — یکتا: `staffId + teamId` |
 
-Migration ها: `20260915085940_identity_user_and_otp` · `20260915092307_authorization_roles_and_permissions` · `20260915093922_academy_structure`
+Migration ها: `identity_user_and_otp` · `authorization_roles_and_permissions` · `academy_structure` · `people_and_staff_assignment`
 
-Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus`
+Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gender` · `PlayerStatus` · `StaffStatus` · `StaffTeamRole` · `GuardianRelation`
+
+### چرا `Person` از `Player`/`Guardian`/`Staff` جداست
+
+`Person` انسان است؛ `Player`، `Guardian` و `Staff` نقش‌هایی هستند که آن انسان در آکادمی دارد — و یک نفر می‌تواند هم‌زمان چند تا از آن‌ها باشد. مربی‌ای که پدر یکی از بازیکنان هم هست در آکادمی واقعی عادی است، و این همان واقعیتی است که در Phase 3 `UserRole` را به یک جدول تبدیل کرد.
+
+جایگزین این بود که نام، کد ملی و تاریخ تولد روی سه جدول تکرار شوند و کم‌کم با هم اختلاف پیدا کنند.
+
+`Person.userId` هم اختیاری است: بازیکن خردسال ممکن است اصلاً حساب کاربری نداشته باشد، در حالی که ولی‌اش دارد.
 
 ### چرا `AgeGroup` سال تولد ذخیره نمی‌کند
 

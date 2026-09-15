@@ -63,11 +63,20 @@ export const PERMISSIONS = {
   "settings:write": "تغییر تنظیمات سیستم",
 
   // --- personal access ---
-  /** Reading and editing one's own record. Everyone signed in holds this. */
+  /** Reading and editing one's own account. Everyone signed in holds this. */
   "self:read": "مشاهده اطلاعات شخصی",
-  /** A parent reading the players linked to them. Enforced by scope, not here. */
-  "child:read": "مشاهده اطلاعات فرزندان",
 } as const;
+
+/**
+ * There is deliberately no `child:read`.
+ *
+ * An earlier draft gave parents their own permission for reading a player.
+ * That was a mistake: reading a child's record *is* reading a player record,
+ * and two permissions for one action means every service has to remember to
+ * accept both — the kind of thing that is forgotten once and then silently
+ * denies a parent access. A parent holds `player:read` like everyone else, and
+ * scope is what limits them to their own children (docs/PERMISSIONS.md §1).
+ */
 
 export type Permission = keyof typeof PERMISSIONS;
 

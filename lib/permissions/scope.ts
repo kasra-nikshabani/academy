@@ -9,17 +9,13 @@ import type { AuthorizedUser } from "./authorize";
  * them is how a coach with `training:write` ends up editing another team's
  * session.
  *
- * ## What is here, and what is not
+ * A caller is turned into a `ScopeFilter` by `resolveScope` (./resolve-scope),
+ * which reads `StaffTeam` and `PlayerGuardian`. Repositories take that filter
+ * and apply it **inside** their queries.
  *
- * The predicates that matter most — a coach's assigned teams, a parent's
- * children — read from `StaffTeam` and `PlayerGuardian`, which do not exist
- * until Phase 5. Writing them now would mean writing them against imagined
- * tables, so this module defines the shape they take and ships the one check
- * that is real today (`assertSelf`, in ./authorize).
- *
- * Every scoped read must also be a *filtered* read: returning everything and
- * checking afterwards leaks through pagination counts and timing. The
- * `ScopeFilter` type below is what repositories will take.
+ * That last part is not a style preference. Fetching everything and filtering
+ * afterwards still leaks: the total count in a paginated response and the time
+ * the request takes both reveal records the caller cannot see.
  */
 
 /** A narrowing a repository applies inside its query, not after it. */
