@@ -46,6 +46,7 @@ model User {
 
   otpCodes  OtpCode[]
   userRoles UserRole[]
+  person    Person?
   /// Role assignments this user granted to others — kept for audit.
   grantedRoles UserRole[] @relation("RoleAssignedBy")
 
@@ -320,6 +321,213 @@ model Team {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  staff StaffTeam[]
+
   @@index([sportId, isActive])
   @@index([ageGroupId])
+}
+
+
+// ---------------------------------------------------------------------------
+// People — Phase 5
+//
+// `Person` is the human. `Player`, `Guardian` and `Staff` are the parts that
+// human plays in the academy, and one person can be several of them at once —
+// a coach who is also a parent is ordinary here, and this is the same fact
+// that made UserRole a table in Phase 3.
+//
+// Splitting identity from role avoids the alternative: repeating name,
+// national code and date of birth on three tables and letting them drift.
+// ---------------------------------------------------------------------------
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PlayerStatus {
+  ACTIVE
+  INACTIVE
+  INJURED
+  TRANSFERRED
+  RETIRED
+}
+
+enum StaffStatus {
+  ACTIVE
+  INACTIVE
+}
+
+/// Role a staff member holds on a particular team.
+enum StaffTeamRole {
+  HEAD_COACH
+  ASSISTANT_COACH
+  GOALKEEPING_COACH
+  FITNESS_COACH
+  ANALYST
+  PHYSIO
+  TEAM_MANAGER
+  OTHER
+}
+
+enum GuardianRelation {
+  FATHER
+  MOTHER
+  GRANDPARENT
+  SIBLING
+  LEGAL_GUARDIAN
+  OTHER
+}
+
+model Person {
+  id String @id @default(cuid())
+
+  firstName String
+  lastName  String
+
+  /// Ten digits with a valid check digit (lib/validation/iran.ts). Optional
+  /// because a child may be registered before the family supplies it, but
+  /// unique when present — it is the key that stops the same player being
+  /// created twice at tryout registration (BUSINESS_RULES §1).
+  nationalCode String? @unique
+
+  /// Stored UTC, rendered Jalali. Age bands read the Jalali birth *year*
+  /// from this (BUSINESS_RULES §4).
+  dateOfBirth DateTime?
+  gender      Gender?
+
+  mobile String?
+  email  String?
+
+  city    String?
+  address String?
+
+  photoKey String?
+
+  /// The login this person uses, if they have one. A young player may have no
+  /// account at all while their guardian does.
+  userId String? @unique
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  player   Player?
+  guardian Guardian?
+  staff    Staff?
+
+  @@index([lastName, firstName])
+}
+
+model Player {
+  id String @id @default(cuid())
+
+  personId String @unique
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  /// Club-facing identifier, e.g. `SEP-1405-0007`.
+  playerCode String       @unique
+  status     PlayerStatus @default(ACTIVE)
+
+  position      String?
+  jerseyNumber  Int?
+  dominantFoot  String?
+  heightCm      Int?
+  weightKg      Int?
+
+  /// Free-text medical note. Sensitive: never logged, never in list responses.
+  medicalNotes String?
+
+  joinedAt DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guardians PlayerGuardian[]
+
+  @@index([status])
+}
+
+model Guardian {
+  id String @id @default(cuid())
+
+  personId String @unique
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  occupation String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  players PlayerGuardian[]
+}
+
+/// Which adults may see which players.
+///
+/// This table *is* the parent scope: a guardian reaches exactly the players
+/// joined to them here and no others.
+model PlayerGuardian {
+  id String @id @default(cuid())
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  guardianId String
+  guardian   Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
+
+  relation GuardianRelation @default(OTHER)
+  /// The adult contacted first. At most one per player, enforced in the service.
+  isPrimary Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@unique([playerId, guardianId])
+  @@index([guardianId])
+}
+
+model Staff {
+  id String @id @default(cuid())
+
+  personId String @unique
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  status StaffStatus @default(ACTIVE)
+
+  /// Job title as the club words it, e.g. «سرمربی».
+  title          String?
+  specialization String?
+  hiredAt        DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams StaffTeam[]
+
+  @@index([status])
+}
+
+/// Which teams a staff member is responsible for.
+///
+/// This table *is* the coach scope: holding `training:write` means nothing
+/// until a row here says which teams it applies to (docs/PERMISSIONS.md §5).
+model StaffTeam {
+  id String @id @default(cuid())
+
+  staffId String
+  staff   Staff  @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  role StaffTeamRole @default(OTHER)
+
+  assignedAt DateTime  @default(now())
+  /// Set instead of deleting, so past responsibility stays on the record.
+  unassignedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([staffId, teamId])
+  @@index([teamId])
 }

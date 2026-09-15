@@ -277,6 +277,211 @@ async function main(): Promise<void> {
     }
     console.info(`  \u2713 ${footballBands.length} teams`);
 
+    // --- people ---------------------------------------------------------
+    //
+    // The seeded accounts are joined to real Person rows here, because that is
+    // what scope resolves through: a coach reaches teams via StaffTeam, a
+    // guardian reaches children via PlayerGuardian.
+
+    /** A structurally valid national code. Fabricated — no real person's. */
+    function nationalCode(nine: string): string {
+      const sum = [...nine].reduce(
+        (total, digit, index) => total + Number(digit) * (10 - index),
+        0,
+      );
+      const remainder = sum % 11;
+      const check = remainder < 2 ? remainder : 11 - remainder;
+      return `${nine}${check}`;
+    }
+
+    const userByMobile = new Map<string, string>();
+    for (const seed of SEED_USERS) {
+      const found = await prisma.user.findUnique({
+        where: { mobile: seed.mobile },
+        select: { id: true },
+      });
+      if (found) userByMobile.set(seed.mobile, found.id);
+    }
+
+    const teams = await prisma.team.findMany({
+      where: { sportId: football.id },
+      include: { ageGroup: true },
+      orderBy: { ageGroup: { minAge: "asc" } },
+    });
+    const u14 = teams.find((team) => team.ageGroup.code === "U14")!;
+    const u16 = teams.find((team) => team.ageGroup.code === "U16")!;
+
+    // --- coach -----------------------------------------------------------
+    const coachPerson = await prisma.person.upsert({
+      where: { nationalCode: nationalCode("100000001") },
+      update: {},
+      create: {
+        firstName: "رضا",
+        lastName: "محمدی",
+        nationalCode: nationalCode("100000001"),
+        gender: "MALE",
+        city: "اصفهان",
+        userId: userByMobile.get("09120000003") ?? null,
+        staff: { create: { title: "سرمربی", status: "ACTIVE" } },
+      },
+      include: { staff: true },
+    });
+
+    if (coachPerson.staff) {
+      // Assigned to U14 only — the scope tests rely on U16 being out of reach.
+      await prisma.staffTeam.upsert({
+        where: {
+          staffId_teamId: { staffId: coachPerson.staff.id, teamId: u14.id },
+        },
+        update: { unassignedAt: null },
+        create: {
+          staffId: coachPerson.staff.id,
+          teamId: u14.id,
+          role: "HEAD_COACH",
+        },
+      });
+    }
+
+    // A second coach, on U16, so "another coach's team" is a real thing.
+    const otherCoach = await prisma.person.upsert({
+      where: { nationalCode: nationalCode("100000002") },
+      update: {},
+      create: {
+        firstName: "حسین",
+        lastName: "کریمی",
+        nationalCode: nationalCode("100000002"),
+        gender: "MALE",
+        staff: { create: { title: "سرمربی", status: "ACTIVE" } },
+      },
+      include: { staff: true },
+    });
+
+    if (otherCoach.staff) {
+      await prisma.staffTeam.upsert({
+        where: {
+          staffId_teamId: { staffId: otherCoach.staff.id, teamId: u16.id },
+        },
+        update: { unassignedAt: null },
+        create: {
+          staffId: otherCoach.staff.id,
+          teamId: u16.id,
+          role: "HEAD_COACH",
+        },
+      });
+    }
+
+    console.info("  \u2713 2 staff (assigned to U14 and U16)");
+
+    // --- players ---------------------------------------------------------
+    const samplePlayers = [
+      {
+        firstName: "علی",
+        lastName: "رضایی",
+        nine: "200000001",
+        birthYear: 1392,
+        userMobile: "09120000004",
+      },
+      {
+        firstName: "محمد",
+        lastName: "حسینی",
+        nine: "200000002",
+        birthYear: 1392,
+        userMobile: null,
+      },
+      {
+        firstName: "امیر",
+        lastName: "نوری",
+        nine: "200000003",
+        birthYear: 1390,
+        userMobile: null,
+      },
+      {
+        firstName: "سینا",
+        lastName: "احمدی",
+        nine: "200000004",
+        birthYear: 1394,
+        userMobile: null,
+      },
+    ];
+
+    let sequence = 1;
+    const createdPlayers: string[] = [];
+
+    for (const sample of samplePlayers) {
+      const code = nationalCode(sample.nine);
+      const existing = await prisma.person.findUnique({
+        where: { nationalCode: code },
+        include: { player: true },
+      });
+
+      if (existing?.player) {
+        createdPlayers.push(existing.player.id);
+        continue;
+      }
+
+      const person = await prisma.person.create({
+        data: {
+          firstName: sample.firstName,
+          lastName: sample.lastName,
+          nationalCode: code,
+          // Nowruz-safe: mid-year, so the Jalali year is unambiguous.
+          dateOfBirth: new Date(Date.UTC(sample.birthYear + 621, 7, 15, 9)),
+          gender: "MALE",
+          city: "اصفهان",
+          userId: sample.userMobile
+            ? (userByMobile.get(sample.userMobile) ?? null)
+            : null,
+          player: {
+            create: {
+              playerCode: `SEP-${season.startYear}-${String(sequence++).padStart(4, "0")}`,
+            },
+          },
+        },
+        include: { player: true },
+      });
+
+      if (person.player) createdPlayers.push(person.player.id);
+    }
+
+    console.info(`  \u2713 ${createdPlayers.length} players`);
+
+    // --- guardian --------------------------------------------------------
+    const guardianPerson = await prisma.person.upsert({
+      where: { nationalCode: nationalCode("300000001") },
+      update: {},
+      create: {
+        firstName: "مریم",
+        lastName: "رضایی",
+        nationalCode: nationalCode("300000001"),
+        gender: "FEMALE",
+        userId: userByMobile.get("09120000005") ?? null,
+        guardian: { create: { occupation: "معلم" } },
+      },
+      include: { guardian: true },
+    });
+
+    // Linked to the first player only — the parent-access test checks that the
+    // second player stays out of reach.
+    if (guardianPerson.guardian && createdPlayers[0]) {
+      await prisma.playerGuardian.upsert({
+        where: {
+          playerId_guardianId: {
+            playerId: createdPlayers[0],
+            guardianId: guardianPerson.guardian.id,
+          },
+        },
+        update: {},
+        create: {
+          playerId: createdPlayers[0],
+          guardianId: guardianPerson.guardian.id,
+          relation: "MOTHER",
+          isPrimary: true,
+        },
+      });
+    }
+
+    console.info("  \u2713 1 guardian (linked to 1 player)");
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );

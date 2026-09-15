@@ -71,6 +71,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       "academy:read",
       "player:read",
       "guardian:read",
+      "staff:read",
       "training:read",
       "training:write",
       "attendance:read",
@@ -92,6 +93,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     description: "دسترسی به اطلاعات شخصی، تیم، تمرین و عملکرد خود",
     permissions: [
       "academy:read",
+      "player:read",
       "training:read",
       "attendance:read",
       "match:read",
@@ -108,6 +110,7 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     description: "دسترسی محدودتر به اطلاعات شخصی و تمرین",
     permissions: [
       "academy:read",
+      "player:read",
       "training:read",
       "attendance:read",
       "notification:read",
@@ -121,7 +124,10 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
     description: "مشاهده اطلاعات فرزندان",
     permissions: [
       "academy:read",
-      "child:read",
+      // Not a separate "child" permission — scope is what limits a parent to
+      // their own children (see catalogue.ts).
+      "player:read",
+      "guardian:read",
       "training:read",
       "attendance:read",
       "match:read",

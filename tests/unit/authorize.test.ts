@@ -149,14 +149,14 @@ describe("multiple roles", () => {
   /** A coach who is also a parent — the reason roles are a separate table. */
   const coachParent = user({
     roles: ["STAFF", "PARENT"],
-    permissions: ["training:write", "child:read"],
+    permissions: ["training:write", "player:read"],
   });
 
   it("holds the union of both roles", () => {
     expect(hasRole(coachParent, "STAFF")).toBe(true);
     expect(hasRole(coachParent, "PARENT")).toBe(true);
     expect(hasPermission(coachParent, "training:write")).toBe(true);
-    expect(hasPermission(coachParent, "child:read")).toBe(true);
+    expect(hasPermission(coachParent, "player:read")).toBe(true);
   });
 
   it("gains nothing it was not granted", () => {

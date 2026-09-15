@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signInAs } from "./support/sign-in";
+import { removeSport } from "./support/db";
 
 test.describe("academy structure", () => {
   test("an administrator can walk the whole structure", async ({ page }) => {
@@ -85,6 +86,8 @@ test.describe("academy structure", () => {
     });
     expect(second.status()).toBe(409);
     expect((await second.json()).error.code).toBe("CONFLICT");
+
+    await removeSport(slug);
   });
 
   test("an invalid age band is refused with field details", async ({

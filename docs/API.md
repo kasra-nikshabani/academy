@@ -227,12 +227,32 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 اگر فصل فعالی نباشد، این فیلد `null` است.
 
+### بازیکنان، اولیا و کادر فنی
+
+| مسیر | متدها | مجوز |
+|---|---|---|
+| `/api/v1/players` | `GET` `POST` | `player:read` / `player:write` |
+| `/api/v1/players/:id` | `GET` `PATCH` | `player:read` / `player:write` |
+| `/api/v1/players/:id/guardians` | `POST` | `player:write` |
+| `/api/v1/guardians` | `POST` | `guardian:write` |
+| `/api/v1/staff` | `GET` `POST` | `staff:read` / `staff:write` |
+| `/api/v1/staff/:id` | `GET` | `staff:read` |
+| `/api/v1/staff/:id/teams` | `POST` `DELETE` | `staff:write` |
+
+**همه این مسیرها علاوه بر مجوز، Scope هم اعمال می‌کنند:**
+
+- ولی فقط فرزندان خودش را می‌بیند؛ `GET /players/:id` برای فرزند خانواده دیگر `OUT_OF_SCOPE` (۴۰۳) می‌دهد
+- مربی فقط کادر تیم‌های خودش را می‌بیند
+- `meta.total` در فهرست بازیکنان بر اساس Query محدودشده محاسبه می‌شود، نه کل جدول — وگرنه تعداد کل، وجود رکوردهای پنهان را لو می‌داد
+- `medicalNotes` فقط برای کسی که `player:write` دارد برگردانده می‌شود
+
+> `POST /staff/:id/teams` همان نوشتنی است که به مربی دسترسی به یک تیم می‌دهد، پس `staff:write` می‌خواهد — مربی نباید بتواند محدوده خودش را گسترش دهد.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
-| `users/:id/roles` (انتساب نقش) | Phase 5 |
-| `players`، `guardians`، `staff` | Phase 5 |
+| `users/:id/roles` (انتساب نقش) | Phase 6 |
 | `enrollments`، `memberships` | Phase 6 |
 | `training`، `attendance` | Phase 8–9 |
 | `tryouts`، `applications`، `screening`، `decision` | Phase 10 |

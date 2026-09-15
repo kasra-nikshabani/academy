@@ -40,6 +40,19 @@ export async function signIn(page: Page, mobile: string): Promise<void> {
 let counter = 0;
 
 /**
+ * A unique, well-formed test mobile: `09` plus nine digits.
+ *
+ * Built here rather than inline in each test — hand-assembled numbers came out
+ * ten digits long and were rejected by the form, which looks exactly like a
+ * broken page.
+ */
+export function uniqueMobile(): string {
+  counter += 1;
+  const digits = `${process.pid % 100000}${counter}`.padStart(9, "0").slice(-9);
+  return `09${digits}`;
+}
+
+/**
  * A fresh account with the given roles, signed in.
  *
  * Returns the mobile number so a test can reuse it. Each call gets its own
@@ -50,10 +63,7 @@ export async function signInAs(
   page: Page,
   roles: readonly string[],
 ): Promise<string> {
-  counter += 1;
-  const mobile = `0913${String(process.pid % 10000).padStart(4, "0")}${String(
-    counter,
-  ).padStart(3, "0")}`;
+  const mobile = uniqueMobile();
 
   await createUserWithRoles(mobile, roles);
   await signIn(page, mobile);
