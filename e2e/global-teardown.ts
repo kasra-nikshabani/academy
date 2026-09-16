@@ -34,6 +34,13 @@ export default async function globalTeardown(): Promise<void> {
     `);
     await client.query(`DELETE FROM "Person" WHERE "lastName" = 'آزمایشی'`);
 
+    // Tryout applicants are the exception to the rule above: the public form
+    // requires a national code, so these people *do* have one. Every code a
+    // test makes begins `999`, which the seed never uses — see
+    // `testNationalCode` in support/db.ts. Deleting the person cascades to
+    // their player, application and screening.
+    await client.query(`DELETE FROM "Person" WHERE "nationalCode" LIKE '999%'`);
+
     // 2. Anything still pointing at a fixture team, then the team itself.
     //
     // Journey events include the ones written onto a *seeded* player by a test
@@ -67,7 +74,15 @@ export default async function globalTeardown(): Promise<void> {
     `);
     await client.query(`DELETE FROM "Team" WHERE slug LIKE 'e2e-%'`);
 
-    // 3. Accounts a fixture signed in as.
+    // 3. Trials a test created. Applications hold their tryout with Restrict,
+    //    so any that survived the person sweep above go first.
+    await client.query(`
+      DELETE FROM "TryoutApplication"
+       WHERE "tryoutId" IN (SELECT id FROM "Tryout" WHERE slug LIKE 'e2e-%')
+    `);
+    await client.query(`DELETE FROM "Tryout" WHERE slug LIKE 'e2e-%'`);
+
+    // 4. Accounts a fixture signed in as.
     await client.query(`DELETE FROM "User" WHERE mobile NOT LIKE '0912000%'`);
   } finally {
     await client.end();

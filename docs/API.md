@@ -373,12 +373,42 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 `GET /api/v1/players/:id/attendance` علاوه بر ردیف‌ها، `totals` و `rate` را برمی‌گرداند. `rate` وقتی `null` است که هیچ جلسه شمرده‌شدنی وجود نداشته باشد.
 
+### استعدادیابی — مدیریتی
+
+| مسیر | متد | مجوز |
+|---|---|---|
+| `/api/v1/tryouts` | `GET` / `POST` | `tryout:read` / `tryout:write` |
+| `/api/v1/tryouts/:id` | `GET` / `PATCH` | `tryout:read` / `tryout:write` |
+| `/api/v1/tryouts/:id/applications` | `GET` | `tryout:read` |
+| `/api/v1/applications/:id/screening` | `PUT` | `tryout:write` |
+| `/api/v1/applications/:id/decision` | `POST` | **`tryout:decide`** |
+
+`GET /tryouts/:id/applications` شاخص‌های قیف را در `meta` برمی‌گرداند و آن‌ها را در دیتابیس می‌شمارد، نه از روی ردیف‌های همان صفحه.
+
+`PUT` برای غربالگری (همان نتیجه، دو بار = یک نتیجه) و `POST` برای تصمیم (یک بار گرفته می‌شود؛ تلاش دوم رد می‌شود، نه اینکه اولی را بی‌صدا بازنویسی کند).
+
+### استعدادیابی — عمومی
+
+**این چهار مسیر بدون Session کار می‌کنند.** تنها مسیرهای سامانه که یک غریبه می‌تواند به آن‌ها بنویسد.
+
+| مسیر | متد | شرط |
+|---|---|---|
+| `/api/v1/tryouts/public/:slug/otp` | `POST` | دوره باز باشد |
+| `/api/v1/tryouts/public/:slug/otp/verify` | `POST` | — |
+| `/api/v1/tryouts/public/:slug/applications` | `POST` | Cookie تأیید شماره |
+| `/api/v1/tryouts/public/status` | `POST` | کد پیگیری + شماره |
+
+**شماره تأییدشده از Cookie امضاشده خوانده می‌شود، نه از بدنه.** فرستادن `mobile` در بدنه ثبت درخواست هیچ اثری ندارد.
+
+پاسخ ثبت درخواست فقط کد پیگیری، وضعیت و زمان ثبت است — نه شناسه بازیکن، نه چیز دیگری از رکورد.
+
+پیگیری وضعیت `POST` است نه `GET`، تا کد پیگیری و شماره موبایل وارد نشانی، History مرورگر، لاگ سرور و هدر Referrer نشوند.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `users/:id/roles` (انتساب نقش) | Phase 6 |
-| `tryouts`، `applications`، `screening`، `decision` | Phase 10 |
 | `evaluations` | Phase 11 |
 | `matches`، `lineup`، `stats` | Phase 13 |
 | `performance` | Phase 14 |

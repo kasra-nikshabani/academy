@@ -59,6 +59,14 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     );
   }
 
+  if (hasPermission(user, "tryout:read")) {
+    items.push({
+      href: "/dashboard/tryouts",
+      label: "استعدادیابی",
+      icon: "tryouts",
+    });
+  }
+
   if (hasPermission(user, "staff:read")) {
     items.push({
       href: "/dashboard/people/staff",

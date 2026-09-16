@@ -135,6 +135,20 @@ export function findPlayerById(id: string) {
   });
 }
 
+/**
+ * The person behind a national code, whatever parts they already play.
+ *
+ * Tryout registration starts here: a school player trying out for a main team
+ * already exists, and creating a second `Person` for them would fork their
+ * history at the moment it becomes interesting (BUSINESS_RULES §1).
+ */
+export function findPersonByNationalCode(nationalCode: string) {
+  return prisma.person.findUnique({
+    where: { nationalCode },
+    include: { player: true, guardian: true },
+  });
+}
+
 export function findPlayerByNationalCode(nationalCode: string) {
   return prisma.player.findFirst({
     where: { person: { nationalCode } },
@@ -165,6 +179,18 @@ export function createPlayerWithPerson(
   });
 }
 
+/** Gives an existing person a player record — they were a guardian, or new. */
+export function createPlayerForPerson(
+  personId: string,
+  player: Omit<Prisma.PlayerCreateInput, "person">,
+  tx?: Db,
+) {
+  return dbOr(tx).player.create({
+    data: { ...player, person: { connect: { id: personId } } },
+    include: { person: true },
+  });
+}
+
 export function updatePlayer(id: string, data: Prisma.PlayerUpdateInput) {
   return prisma.player.update({
     where: { id },
@@ -186,20 +212,41 @@ export function findGuardianByNationalCode(nationalCode: string) {
   });
 }
 
-export function createGuardianWithPerson(person: Prisma.PersonCreateInput) {
-  return prisma.guardian.create({
+export function createGuardianWithPerson(
+  person: Prisma.PersonCreateInput,
+  tx?: Db,
+) {
+  return dbOr(tx).guardian.create({
     data: { person: { create: person } },
     include: { person: true },
   });
 }
 
-export function linkGuardianToPlayer(data: {
-  playerId: string;
-  guardianId: string;
-  relation: Prisma.PlayerGuardianCreateInput["relation"];
-  isPrimary: boolean;
-}) {
-  return prisma.$transaction(async (tx) => {
+/** Gives an existing person a guardian record — often a parent who is staff. */
+export function createGuardianForPerson(personId: string, tx?: Db) {
+  return dbOr(tx).guardian.create({
+    data: { person: { connect: { id: personId } } },
+    include: { person: true },
+  });
+}
+
+/**
+ * Joins a guardian to a player.
+ *
+ * Takes an optional transaction so a tryout registration can create the
+ * player, the guardian, the link and the timeline entry as one write — a
+ * child registered without the adult who brought them is a half-record.
+ */
+export function linkGuardianToPlayer(
+  data: {
+    playerId: string;
+    guardianId: string;
+    relation: Prisma.PlayerGuardianCreateInput["relation"];
+    isPrimary: boolean;
+  },
+  tx?: Db,
+) {
+  const run = async (tx: Db) => {
     if (data.isPrimary) {
       // Exactly one primary contact per player.
       await tx.playerGuardian.updateMany({
@@ -218,7 +265,9 @@ export function linkGuardianToPlayer(data: {
       update: { relation: data.relation, isPrimary: data.isPrimary },
       create: data,
     });
-  });
+  };
+
+  return tx ? run(tx) : prisma.$transaction((inner) => run(inner));
 }
 
 // --- staff ------------------------------------------------------------------
