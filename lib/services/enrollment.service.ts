@@ -16,6 +16,8 @@ import {
 } from "@/lib/repositories/academy.repository";
 import * as repo from "@/lib/repositories/enrollment.repository";
 import { findPlayerById } from "@/lib/repositories/people.repository";
+import { runInTransaction } from "@/lib/repositories/transaction";
+import { recordJourneyEvent } from "./journey.service";
 import { isBirthYearEligible } from "./age-group";
 import { toJalali } from "@/lib/utils/date";
 import type {
@@ -31,6 +33,12 @@ import type {
  * does **not** end their school enrolment. Only an explicit decision does
  * (BUSINESS_RULES §2).
  */
+
+const ENROLLMENT_END_REASON: Record<string, string> = {
+  TRANSFERRED: "انتقال به مدرسه یا تیم دیگر",
+  COMPLETED: "دوره به پایان رسید",
+  CANCELLED: "ثبت‌نام لغو شد",
+};
 
 async function requireSeason(seasonId?: string) {
   const season = seasonId
@@ -97,12 +105,34 @@ export async function enrollPlayerInSchool(
     );
   }
 
-  const enrollment = await repo.createSchoolEnrollment({
-    playerId: input.playerId,
-    schoolId: input.schoolId,
-    seasonId: season.id,
-    status: input.status,
-    notes: input.notes,
+  // The enrolment and the timeline entry go in together: an event describing
+  // an enrolment that was never written would be a lie in the record.
+  const enrollment = await runInTransaction(async (tx) => {
+    const created = await repo.createSchoolEnrollment(
+      {
+        playerId: input.playerId,
+        schoolId: input.schoolId,
+        seasonId: season.id,
+        status: input.status,
+        notes: input.notes,
+      },
+      tx,
+    );
+
+    await recordJourneyEvent(
+      {
+        playerId: input.playerId,
+        type: "SCHOOL_JOINED",
+        title: `ثبت‌نام در ${school.name}`,
+        description: `فصل ${season.name}`,
+        seasonId: season.id,
+        schoolId: input.schoolId,
+        actorId: caller.id,
+      },
+      tx,
+    );
+
+    return created;
   });
 
   logger.info("player enrolled in school", {
@@ -142,11 +172,34 @@ export async function updateEnrollmentStatus(
     actorId: caller.id,
   });
 
-  return repo.updateSchoolEnrollment(id, {
-    status: input.status as never,
-    ...(input.notes === undefined ? {} : { notes: input.notes }),
-    // The row is kept either way; only the end date is stamped.
-    ...(ending ? { endedAt: new Date() } : { endedAt: null }),
+  return runInTransaction(async (tx) => {
+    const updated = await repo.updateSchoolEnrollment(
+      id,
+      {
+        status: input.status as never,
+        ...(input.notes === undefined ? {} : { notes: input.notes }),
+        // The row is kept either way; only the end date is stamped.
+        ...(ending ? { endedAt: new Date() } : { endedAt: null }),
+      },
+      tx,
+    );
+
+    if (ending) {
+      await recordJourneyEvent(
+        {
+          playerId: enrollment.playerId,
+          type: input.status === "TRANSFERRED" ? "TRANSFERRED" : "OTHER",
+          title: `پایان ثبت‌نام در ${enrollment.school.name}`,
+          description: ENROLLMENT_END_REASON[input.status] ?? input.status,
+          seasonId: enrollment.seasonId,
+          schoolId: enrollment.schoolId,
+          actorId: caller.id,
+        },
+        tx,
+      );
+    }
+
+    return updated;
   });
 }
 
@@ -251,14 +304,54 @@ export async function addPlayerToTeam(
       ? `استثنای رده سنی — متولد ${birthYear}، رده ${team.ageGroup.code}`
       : undefined;
 
-  const membership = await repo.upsertMembership({
-    playerId: input.playerId,
-    teamId: input.teamId,
-    seasonId: season.id,
-    isPrimary: input.isPrimary,
-    jerseyNumber: input.jerseyNumber,
-    notes:
-      [input.notes, exceptionNote].filter(Boolean).join(" · ") || undefined,
+  // Joining a squad above the one the player is already in is a promotion,
+  // not just another membership — the club's timeline tells them apart
+  // (CLAUDE.md §12).
+  const existing = await repo.listMembershipsForPlayer(input.playerId);
+  const currentPrimary = existing.find(
+    (row) => row.isPrimary && row.seasonId === season.id && row.leftAt === null,
+  );
+  const previousTeam = currentPrimary
+    ? await findTeamById(currentPrimary.teamId)
+    : null;
+  const isPromotion =
+    previousTeam !== null &&
+    previousTeam.id !== input.teamId &&
+    team.ageGroup.minAge > previousTeam.ageGroup.minAge;
+
+  const membership = await runInTransaction(async (tx) => {
+    const created = await repo.upsertMembership(
+      {
+        playerId: input.playerId,
+        teamId: input.teamId,
+        seasonId: season.id,
+        isPrimary: input.isPrimary,
+        jerseyNumber: input.jerseyNumber,
+        notes:
+          [input.notes, exceptionNote].filter(Boolean).join(" · ") || undefined,
+      },
+      tx,
+    );
+
+    await recordJourneyEvent(
+      {
+        playerId: input.playerId,
+        type: isPromotion ? "PROMOTED" : "TEAM_JOINED",
+        title: isPromotion ? `ارتقا به ${team.name}` : `پیوستن به ${team.name}`,
+        description: [
+          `فصل ${season.name}`,
+          eligible ? null : "با استثنای رده سنی",
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        seasonId: season.id,
+        teamId: input.teamId,
+        actorId: caller.id,
+      },
+      tx,
+    );
+
+    return created;
   });
 
   logger.info("player added to team", {
@@ -290,5 +383,22 @@ export async function endPlayerMembership(
     actorId: caller.id,
   });
 
-  return repo.endMembership(id, status);
+  return runInTransaction(async (tx) => {
+    const ended = await repo.endMembership(id, status, tx);
+
+    await recordJourneyEvent(
+      {
+        playerId: membership.playerId,
+        type: "TEAM_LEFT",
+        title: `جدایی از ${membership.team.name}`,
+        description: status === "RELEASED" ? "آزاد شد" : "عضویت غیرفعال شد",
+        seasonId: membership.seasonId,
+        teamId: membership.teamId,
+        actorId: caller.id,
+      },
+      tx,
+    );
+
+    return ended;
+  });
 }

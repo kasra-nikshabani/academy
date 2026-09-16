@@ -146,6 +146,8 @@ Google Fonts عمداً استفاده نشد: اتکای Build و Runtime به 
 
 Keyboard Navigation · HTML معنایی · Label برای هر ورودی · Focus State مشخص · Contrast کافی · Dialog و Table قابل استفاده با Screen Reader · صحت RTL
 
+> **`CardTitle` یک Heading است، نه `div`.** shadcn آن را `div` می‌سازد؛ چون کارت یک بخش از صفحه را عنوان می‌دهد، کاربری که با Heading ها پیمایش می‌کند در آن حالت از روی همه کارت‌های صفحه می‌پرد. عنوان صفحه `h1` است (در `PageHeader`) و کارت‌ها یک سطح پایین‌تر، `h2`.
+
 ## 9. Component ها
 
 ### ✅ پیاده‌سازی‌شده (Phase 1)
@@ -164,6 +166,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `DataTable` | `components/ui/data-table.tsx` |
 | `AppShell` | `components/layout/app-shell.tsx` |
 | `SidebarNav` | `components/navigation/sidebar-nav.tsx` |
+| `PlayerJourney` | `components/players/player-journey.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده

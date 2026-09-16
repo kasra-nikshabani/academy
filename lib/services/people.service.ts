@@ -15,6 +15,8 @@ import {
 } from "@/lib/permissions";
 import * as repo from "@/lib/repositories/people.repository";
 import { findActiveSeason } from "@/lib/repositories/academy.repository";
+import { runInTransaction } from "@/lib/repositories/transaction";
+import { recordJourneyEvent } from "./journey.service";
 import type {
   CreateGuardianInput,
   CreatePlayerInput,
@@ -31,6 +33,42 @@ import type {
  * The second is the reason this phase waited for `StaffTeam` and
  * `PlayerGuardian` (docs/PERMISSIONS.md §5).
  */
+
+/** Prisma's code for a unique-constraint violation. */
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { code?: unknown }).code === "P2002"
+  );
+}
+
+/**
+ * Allocates a player code and runs the write, retrying if another registration
+ * took the same code first.
+ *
+ * Bounded: after a few attempts something other than contention is wrong, and
+ * looping forever would turn a bug into a hung request.
+ */
+async function createWithPlayerCode<T>(
+  seasonYear: number,
+  write: (playerCode: string) => Promise<T>,
+): Promise<T> {
+  const MAX_ATTEMPTS = 5;
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const playerCode = await repo.nextPlayerCode(seasonYear);
+    try {
+      return await write(playerCode);
+    } catch (error) {
+      if (!isUniqueViolation(error) || attempt === MAX_ATTEMPTS) throw error;
+      logger.warn("player code was taken, retrying", { attempt });
+    }
+  }
+
+  // Unreachable: the loop either returns or throws.
+  throw new Error("could not allocate a player code");
+}
 
 // --- players ----------------------------------------------------------------
 
@@ -114,15 +152,48 @@ export async function createPlayer(
     ...person
   } = input;
 
-  const player = await repo.createPlayerWithPerson(person, {
-    playerCode: await repo.nextPlayerCode(season.startYear),
-    ...(position ? { position } : {}),
-    ...(jerseyNumber ? { jerseyNumber } : {}),
-    ...(dominantFoot ? { dominantFoot } : {}),
-    ...(heightCm ? { heightCm } : {}),
-    ...(weightKg ? { weightKg } : {}),
-    ...(medicalNotes ? { medicalNotes } : {}),
-  });
+  /**
+   * The player and the first line of their timeline are written together: a
+   * player with no beginning, or a beginning with no player, would both be
+   * wrong (docs/BUSINESS_RULES.md §12).
+   *
+   * The player code is allocated by reading the highest one and adding one,
+   * which two registrations happening at the same moment will both read. That
+   * is not hypothetical — two staff registering during a trial session is the
+   * normal case — so a collision is retried rather than surfaced as "a record
+   * with these details already exists", which would be both confusing and
+   * untrue.
+   */
+  const player = await createWithPlayerCode(season.startYear, (playerCode) =>
+    runInTransaction(async (tx) => {
+      const created = await repo.createPlayerWithPerson(
+        person,
+        {
+          playerCode,
+          ...(position ? { position } : {}),
+          ...(jerseyNumber ? { jerseyNumber } : {}),
+          ...(dominantFoot ? { dominantFoot } : {}),
+          ...(heightCm ? { heightCm } : {}),
+          ...(weightKg ? { weightKg } : {}),
+          ...(medicalNotes ? { medicalNotes } : {}),
+        },
+        tx,
+      );
+
+      await recordJourneyEvent(
+        {
+          playerId: created.id,
+          type: "REGISTERED",
+          title: "ثبت‌نام در آکادمی",
+          description: `کد بازیکن ${created.playerCode}`,
+          actorId: caller.id,
+        },
+        tx,
+      );
+
+      return created;
+    }),
+  );
 
   // Never log the national code or the medical note (CLAUDE.md §27).
   logger.info("player created", {

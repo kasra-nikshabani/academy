@@ -50,7 +50,7 @@ test.describe("authentication", () => {
     await page.getByLabel("کد تأیید").fill("999999");
     await page.getByRole("button", { name: "ورود", exact: true }).click();
 
-    await expect(page.getByRole("alert")).toBeVisible();
+    await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
     await expect(page).not.toHaveURL(/\/dashboard/);
   });
 
@@ -73,7 +73,8 @@ test.describe("authentication", () => {
     await page.getByLabel("شماره موبایل").fill("12345");
     await page.getByRole("button", { name: "دریافت کد تأیید" }).click();
 
-    await expect(page.getByRole("alert")).toBeVisible();
+    // Scoped to the form: the toast region is also an alert.
+    await expect(page.getByRole("main").getByRole("alert")).toBeVisible();
     await expect(page.getByRole("heading", { name: "کد تأیید" })).toBeHidden();
   });
 

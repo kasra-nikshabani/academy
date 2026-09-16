@@ -78,6 +78,8 @@ export async function createUserWithRoles(
   mobile: string,
   roleKeys: readonly string[],
 ): Promise<void> {
+  assertNotSeeded(mobile);
+
   await withClient(async (client) => {
     await client.query(`DELETE FROM "OtpCode" WHERE "mobile" = $1`, [mobile]);
     await client.query(
@@ -128,6 +130,19 @@ export async function removeSport(slug: string): Promise<void> {
 }
 
 /**
+ * Seeded accounts use the 0912000xxxx range and are shared by every test.
+ * A fixture that writes to one of them changes the ground other tests stand
+ * on — which is exactly how a seeded coach ended up with an extra team.
+ */
+function assertNotSeeded(mobile: string): void {
+  if (mobile.startsWith("0912000")) {
+    throw new Error(
+      `${mobile} is a seeded account; fixtures must create their own`,
+    );
+  }
+}
+
+/**
  * Test people are created without a national code.
  *
  * An earlier version derived one from the process id, which meant the value
@@ -174,6 +189,8 @@ export async function createParentWithChild(mobile: string): Promise<{
   ownChildId: string;
   strangerChildId: string;
 }> {
+  assertNotSeeded(mobile);
+
   return withClient(async (client) => {
     await client.query(`DELETE FROM "OtpCode" WHERE "mobile" = $1`, [mobile]);
     await client.query(
@@ -235,6 +252,8 @@ export async function createCoachWithSquad(mobile: string): Promise<{
   squadPlayerId: string;
   otherTeamPlayerId: string;
 }> {
+  assertNotSeeded(mobile);
+
   return withClient(async (client) => {
     await client.query(`DELETE FROM "OtpCode" WHERE "mobile" = $1`, [mobile]);
     await client.query(
@@ -370,5 +389,26 @@ export async function removeMembership(
       `DELETE FROM "TeamMembership" WHERE "playerId" = $1 AND "teamId" = $2`,
       [playerId, teamId],
     );
+  });
+}
+
+/**
+ * Removes a player a test created, with everything hanging off them.
+ *
+ * Journey events are append-only in the application and cannot be deleted
+ * through it — which is right for a record, and exactly why a test that
+ * creates players must clear them here instead of leaving them to pile up.
+ */
+export async function removePlayer(playerId: string): Promise<void> {
+  await withClient(async (client) => {
+    const { rows } = await client.query<{ personId: string }>(
+      `SELECT "personId" FROM "Player" WHERE id = $1`,
+      [playerId],
+    );
+    const personId = rows[0]?.personId;
+    if (!personId) return;
+
+    // Person cascades to Player, and Player cascades to the rest.
+    await client.query(`DELETE FROM "Person" WHERE id = $1`, [personId]);
   });
 }

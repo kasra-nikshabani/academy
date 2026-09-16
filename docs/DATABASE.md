@@ -27,10 +27,11 @@ PostgreSQL 17 + Prisma 7.
 | `StaffTeam` | ۵ | **همان Scope مربی** — یکتا: `staffId + teamId` |
 | `SchoolEnrollment` | ۶ | یکتا: `playerId + schoolId + seasonId` |
 | `TeamMembership` | ۶ | یکتا: `playerId + teamId + seasonId` |
+| `PlayerJourneyEvent` | ۷ | فقط افزودنی؛ بدون ویرایش و حذف |
 
-Migration ها: `identity_user_and_otp` · `authorization_roles_and_permissions` · `academy_structure` · `people_and_staff_assignment` · `enrollment_school_and_team`
+Migration ها: `identity_user_and_otp` · `authorization_roles_and_permissions` · `academy_structure` · `people_and_staff_assignment` · `enrollment_school_and_team` · `player_journey_events`
 
-Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gender` · `PlayerStatus` · `StaffStatus` · `StaffTeamRole` · `GuardianRelation` · `EnrollmentStatus` · `MembershipStatus`
+Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gender` · `PlayerStatus` · `StaffStatus` · `StaffTeamRole` · `GuardianRelation` · `EnrollmentStatus` · `MembershipStatus` · `JourneyEventType`
 
 ### چرا `Person` از `Player`/`Guardian`/`Staff` جداست
 
@@ -43,6 +44,14 @@ Enum ها: `UserStatus` · `OtpPurpose` · `RoleKey` · `SeasonStatus` · `Gende
 ### چرا `AgeGroup` سال تولد ذخیره نمی‌کند
 
 سال‌های تولد مجاز هر فصل تغییر می‌کنند. ذخیره‌کردنشان یعنی هر تابستان همه رده‌ها دستی به‌روزرسانی شوند و هر رکوردی که جا بماند بی‌صدا غلط شود. بازه سنی ثابت است؛ سال تولد از روی فصل محاسبه می‌شود (docs/BUSINESS_RULES.md §4).
+
+### چرا `PlayerJourneyEvent` ارجاع آزاد دارد نه Relation
+
+`teamId` و `schoolId` روی رویداد، کلید خارجی نیستند. رویداد باید از حذف یا غیرفعال شدن تیم جان سالم به در ببرد: «پیوستن به فوتبال U14» اتفاقی است که افتاده، حتی اگر آن تیم بعداً برچیده شود.
+
+### چرا رویدادها در Transaction واقعه نوشته می‌شوند
+
+`lib/repositories/transaction.ts` ابزار این کار است. رویدادی که واقعه‌اش ثبت نشده، و واقعه‌ای که رویدادش گم شده، هر دو Timeline را غیرقابل اعتماد می‌کنند — و چون Timeline فقط افزودنی است، اشتباه قابل پاک کردن نیست.
 
 ### چرا `SchoolEnrollment` و `TeamMembership` دو جدول جدا هستند
 

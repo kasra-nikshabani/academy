@@ -370,9 +370,26 @@ async function main(): Promise<void> {
       });
     }
 
+    // A seed should leave a known state, not merely add to whatever is there.
+    // Test runs had attached extra teams to the seeded coaches, which quietly
+    // widened their scope and broke assertions elsewhere.
+    for (const [person, keepTeamId] of [
+      [coachPerson, u14.id],
+      [otherCoach, u16.id],
+    ] as const) {
+      if (!person.staff) continue;
+      await prisma.staffTeam.deleteMany({
+        where: { staffId: person.staff.id, teamId: { not: keepTeamId } },
+      });
+    }
+
     console.info("  \u2713 2 staff (assigned to U14 and U16)");
 
     // --- players ---------------------------------------------------------
+    //
+    // Every seeded player gets a national code. Tests never set one, and the
+    // E2E teardown relies on that to tell seeded people from test people —
+    // so if this ever changes, update e2e/global-teardown.ts with it.
     const samplePlayers = [
       {
         firstName: "علی",
@@ -555,6 +572,81 @@ async function main(): Promise<void> {
     console.info(
       `  \u2713 ${createdPlayers.length} school enrolments, 3 team memberships`,
     );
+
+    // --- journey ----------------------------------------------------------
+    //
+    // The seed writes the events its own records imply, so a seeded database
+    // has a timeline that matches its data. In the running application these
+    // are written by the services, inside the transaction of the fact they
+    // describe.
+    //
+    // Idempotent per event, not per player: an earlier version skipped a
+    // player who had *any* event, so a player who lost one event could never
+    // get it back.
+    for (const playerId of createdPlayers) {
+      const player = await prisma.player.findUniqueOrThrow({
+        where: { id: playerId },
+      });
+
+      const membership = await prisma.teamMembership.findFirst({
+        where: { playerId, seasonId: season.id },
+        include: { team: true },
+      });
+
+      const wanted: Array<{
+        type: "REGISTERED" | "SCHOOL_JOINED" | "TEAM_JOINED";
+        title: string;
+        description: string;
+        occurredAt?: Date;
+        schoolId?: string;
+        teamId?: string;
+      }> = [
+        {
+          type: "REGISTERED",
+          title: "ثبت‌نام در آکادمی",
+          description: `کد بازیکن ${player.playerCode}`,
+          occurredAt: player.joinedAt,
+        },
+        {
+          type: "SCHOOL_JOINED",
+          title: `ثبت‌نام در ${school.name}`,
+          description: `فصل ${season.name}`,
+          schoolId: school.id,
+        },
+      ];
+
+      if (membership) {
+        wanted.push({
+          type: "TEAM_JOINED",
+          title: `پیوستن به ${membership.team.name}`,
+          description: `فصل ${season.name}`,
+          teamId: membership.teamId,
+        });
+      }
+
+      for (const event of wanted) {
+        const exists = await prisma.playerJourneyEvent.findFirst({
+          where: { playerId, type: event.type },
+        });
+        if (exists) continue;
+
+        await prisma.playerJourneyEvent.create({
+          data: {
+            playerId,
+            type: event.type,
+            title: event.title,
+            description: event.description,
+            seasonId: season.id,
+            ...(event.occurredAt ? { occurredAt: event.occurredAt } : {}),
+            ...(event.schoolId ? { schoolId: event.schoolId } : {}),
+            ...(event.teamId ? { teamId: event.teamId } : {}),
+          },
+        });
+      }
+    }
+
+    const journeyCount = await prisma.playerJourneyEvent.count();
+    console.info(`  \u2713 ${journeyCount} journey events`);
 
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
