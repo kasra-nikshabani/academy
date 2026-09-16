@@ -17,8 +17,8 @@
 | 8 | Training | ✅ تکمیل |
 | 9 | Attendance | ✅ تکمیل |
 | 10 | Tryouts | ✅ تکمیل |
-| 11 | Evaluation Engine | ⏳ بعدی |
-| 12 | Talent Pipeline | ⛔ |
+| 11 | Evaluation Engine | ✅ تکمیل |
+| 12 | Talent Pipeline | ⏳ بعدی |
 | 13 | Matches | ⛔ |
 | 14 | Performance | ⛔ |
 | 15 | Notifications | ⛔ |
@@ -203,6 +203,16 @@
 **دو نقص که پیدا شد:** مسابقه تخصیص کد بازیکن در Service جدید از نو ساخته شده بود (Phase 7 یک‌بار حلش کرده بود)، و `Button` با `variant="outline"` روی نوار تیره کنتراست ۱٫۱ داشت.
 
 **بیرون از محدوده این فاز:** مرحله مدارک (Phase 18) و ارزیابی (Phase 11).
+
+## Phase 11 — Evaluation Engine ✅
+
+`EvaluationTemplate`، `EvaluationCriterion`، `Evaluation`، `EvaluationScore`.
+
+**تحویل شد:** مدل و Migration دهم · موتور امتیازدهی وزن‌دار با نرمال‌سازی به مقیاس ۰ تا ۱۰ · سپردن ارزیابی به مربی به‌عنوان تنها راه او به بازیکن آزمون · برگه ارزیابی تعاملی با ذخیره پیش‌نویس و ثبت نهایی · فهرست ارزیابی‌ها و الگوها · خلاصه ارزیابی کنار هر درخواست استعدادیابی · پنج مسیر API · الگوی Seed با ۸ معیار.
+
+**قواعد:** `docs/BUSINESS_RULES.md` §۱۶ · **تصمیم‌ها:** `docs/ARCHITECTURE.md` §۶.۱۱
+
+**سه یافته:** توضیح تله `pg` در Phase 8 ناقص بود و اصلاح شد؛ هشت فهرست صفحه‌بندی‌شده از `$transaction([…])` به `Promise.all` رفتند؛ و تست ارزیابی روی بازیکن Seed رویداد جا می‌گذاشت.
 
 ## فازهای ۴ تا ۲۲
 

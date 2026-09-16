@@ -110,7 +110,8 @@ export function upsertEntry(
   },
   tx?: Db,
 ) {
-  const minutesLate = data.status === "LATE" ? (data.minutesLate ?? null) : null;
+  const minutesLate =
+    data.status === "LATE" ? (data.minutesLate ?? null) : null;
   const note = data.note ?? null;
 
   return dbOr(tx).attendance.upsert({
