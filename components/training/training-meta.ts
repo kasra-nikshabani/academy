@@ -1,4 +1,5 @@
 import type {
+  AttendanceStatus,
   TrainingStatus,
   TrainingType,
 } from "@/lib/generated/prisma/enums";
@@ -25,4 +26,29 @@ export const TRAINING_STATUS_LABEL: Record<TrainingStatus, string> = {
   SCHEDULED: "برنامه‌ریزی‌شده",
   COMPLETED: "برگزار شد",
   CANCELLED: "لغو شد",
+};
+
+export const ATTENDANCE_STATUS_LABEL: Record<AttendanceStatus, string> = {
+  PRESENT: "حاضر",
+  LATE: "تأخیر",
+  ABSENT: "غایب",
+  EXCUSED: "موجه",
+};
+
+/**
+ * The four statuses in the order a coach reads them — best to worst, with
+ * «موجه» last because it is an administrative answer rather than a worse one.
+ */
+export const ATTENDANCE_STATUS_ORDER = [
+  "PRESENT",
+  "LATE",
+  "ABSENT",
+  "EXCUSED",
+] as const satisfies readonly AttendanceStatus[];
+
+export const ATTENDANCE_STATUS_CLASS: Record<AttendanceStatus, string> = {
+  PRESENT: "bg-success text-success-foreground",
+  LATE: "bg-warning text-warning-foreground",
+  ABSENT: "bg-destructive/15 text-destructive",
+  EXCUSED: "bg-muted text-muted-foreground",
 };

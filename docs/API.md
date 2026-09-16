@@ -343,12 +343,41 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 `POST /api/v1/training/plans` می‌تواند تمرین‌ها را هم‌زمان با برنامه بگیرد (`exercises`)، تا کل برنامه در یک درخواست ثبت شود. برنامه بدون `teamId`، برنامه عمومی آکادمی است و فقط برای Caller بدون Scope مجاز است.
 
+### حضور و غیاب
+
+| مسیر | متد | مجوز |
+|---|---|---|
+| `/api/v1/training/sessions/:id/attendance` | `GET` | `attendance:read` + Scope **تیم** |
+| `/api/v1/training/sessions/:id/attendance` | `PUT` | `attendance:write` + Scope **تیم** |
+| `/api/v1/players/:id/attendance` | `GET` | `attendance:read` + Scope **بازیکن** |
+
+دو مسیر خواندن عمداً جدا هستند: دفتر حضور یک جلسه با Scope تیم، و پرونده حضور یک بازیکن با Scope بازیکن. ولی به اولی دسترسی ندارد و به دومی — فقط برای فرزند خودش — دارد (docs/BUSINESS_RULES.md §14).
+
+**ثبت دفتر، «همه حاضر» به‌علاوه استثناها است:**
+
+```json
+{
+  "defaultStatus": "PRESENT",
+  "entries": [
+    { "playerId": "…", "status": "LATE", "minutesLate": 12 },
+    { "playerId": "…", "status": "ABSENT", "note": "بیماری" }
+  ]
+}
+```
+
+`defaultStatus` روی هر عضو ترکیب که در `entries` نیامده اعمال می‌شود؛ حذفش کنید تا فقط همان چند ردیف اصلاح شود. ترکیب تیم در لحظه نوشتن روی سرور حل می‌شود.
+
+`PUT` است نه `POST`: ارسال دوباره همان دفتر همان نتیجه را می‌دهد.
+
+پاسخ، خودِ دفتر پس از ثبت است — هر عضو ترکیب با وضعیتش، به‌علاوه `totals` و تعداد `pending`.
+
+`GET /api/v1/players/:id/attendance` علاوه بر ردیف‌ها، `totals` و `rate` را برمی‌گرداند. `rate` وقتی `null` است که هیچ جلسه شمرده‌شدنی وجود نداشته باشد.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `users/:id/roles` (انتساب نقش) | Phase 6 |
-| `attendance` | Phase 9 |
 | `tryouts`، `applications`، `screening`، `decision` | Phase 10 |
 | `evaluations` | Phase 11 |
 | `matches`، `lineup`، `stats` | Phase 13 |
