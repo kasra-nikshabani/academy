@@ -169,6 +169,8 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `PlayerJourney` | `components/players/player-journey.tsx` |
 | `TrainingCard` | `components/training/training-card.tsx` |
 | `TrainingWeek` | `components/training/training-week.tsx` |
+| `AttendanceSheet` | `components/training/attendance-sheet.tsx` |
+| `AttendanceSummary` | `components/training/attendance-summary.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -180,7 +182,21 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 
 ### Domain Component ها
 
-PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · EvaluationCard · AttendanceTable · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · EvaluationCard · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+
+### چرا دفتر حضور جدول نشد
+
+`AttendanceTable` در فهرست بالا یک جدول را تداعی می‌کند. اما این صفحه روی گوشی و کنار زمین باز می‌شود؛ جدولی با چهار ستون وضعیت در ۳۷۵ پیکسل یا افقی اسکرول می‌خورد یا ستون‌هایش به چند کاراکتر بریده می‌شوند.
+
+به‌جایش هر بازیکن یک ردیف است با یک کنترل چهارگزینه‌ای در همان خط، و فیلد توضیح فقط روی ردیف‌هایی باز می‌شود که استثنا هستند — بازیکن حاضر چیزی برای توضیح دادن ندارد.
+
+کنترل روی `RadioGroup` رادیکس ساخته شده تا پیمایش با کلید جهت و `aria-checked` درست باشد، اما ظاهرش یک نوار چهاربخشی است نه چهار دایره.
+
+### چرا بدون React Hook Form
+
+اولین فرم تعاملی پروژه است و وسوسه‌برانگیز بود که RHF همین‌جا اضافه شود. اما این فرم فهرستی از انتخاب چهارگزینه‌ای است، بدون اعتبارسنجی بین‌فیلدی و بدون فیلد اجباری. `useState` ساده‌تر و کوچک‌تر است.
+
+RHF جایش فرم ثبت‌نام Tryout در Phase 10 است — چند مرحله، اعتبارسنجی کد ملی و موبایل، و آپلود مدرک (CLAUDE.md §۲ — وابستگی با دلیل).
 
 ### تقویم هفتگی تمرین — چرا Container Query و نه Breakpoint
 

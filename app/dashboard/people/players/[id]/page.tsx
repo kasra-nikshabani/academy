@@ -9,7 +9,10 @@ import {
   listPlayerMemberships,
 } from "@/lib/services/enrollment.service";
 import { getPlayerJourney } from "@/lib/services/journey.service";
+import { getPlayerRegister } from "@/lib/services/attendance.service";
 import { PlayerJourney } from "@/components/players/player-journey";
+import { AttendanceSummary } from "@/components/training/attendance-summary";
+import { hasPermission } from "@/lib/permissions";
 import { formatJalali, toJalali } from "@/lib/utils/date";
 import { toPersianDigits } from "@/lib/utils/number";
 
@@ -51,12 +54,16 @@ export default async function PlayerPage(props: {
 }) {
   const caller = await requireUser();
   const { id } = await props.params;
-  const [player, enrollments, memberships, journey] = await Promise.all([
-    getPlayer(caller, id),
-    listPlayerEnrollments(caller, id),
-    listPlayerMemberships(caller, id),
-    getPlayerJourney(caller, id),
-  ]);
+  const [player, enrollments, memberships, journey, attendance] =
+    await Promise.all([
+      getPlayer(caller, id),
+      listPlayerEnrollments(caller, id),
+      listPlayerMemberships(caller, id),
+      getPlayerJourney(caller, id),
+      hasPermission(caller, "attendance:read")
+        ? getPlayerRegister(caller, id)
+        : null,
+    ]);
 
   return (
     <>
@@ -204,6 +211,21 @@ export default async function PlayerPage(props: {
           </CardContent>
         </Card>
       </div>
+
+      {attendance ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">حضور و غیاب</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <AttendanceSummary
+              totals={attendance.totals}
+              rate={attendance.rate}
+              entries={attendance.entries}
+            />
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>
