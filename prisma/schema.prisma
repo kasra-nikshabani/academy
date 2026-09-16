@@ -455,6 +455,7 @@ model Player {
   schoolEnrollments SchoolEnrollment[]
   teamMemberships   TeamMembership[]
   journeyEvents     PlayerJourneyEvent[]
+  attendance        Attendance[]
 
   @@index([status])
 }
@@ -818,6 +819,8 @@ model TrainingSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  attendance Attendance[]
+
   /// There is deliberately **no** unique key on `teamId + startsAt`.
   ///
   /// It looks like the obvious backstop for a double booking, and it was here
@@ -831,4 +834,58 @@ model TrainingSession {
   @@index([startsAt])
   @@index([seasonId])
   @@index([status, startsAt])
+}
+
+// ---------------------------------------------------------------------------
+// Attendance — Phase 9
+//
+// One row per player per session. The coach marks the whole squad present and
+// then corrects the exceptions, which is how attendance is actually taken at
+// the side of a pitch (CLAUDE.md §15).
+//
+// Who may see what splits here, and the split is the point of this module:
+// the **sheet** belongs to the coach, the **row** belongs to the player. A
+// parent reads their own child's attendance and never learns which other
+// child was absent (docs/PRODUCT_SPEC.md §8).
+// ---------------------------------------------------------------------------
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  ABSENT
+  EXCUSED
+}
+
+model Attendance {
+  id String @id @default(cuid())
+
+  trainingSessionId String
+  trainingSession   TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  status AttendanceStatus
+
+  /// Only meaningful with `LATE`; the service clears it for every other status
+  /// rather than leaving a stale number attached to a player who was present.
+  minutesLate Int?
+
+  /// Why, in the coach's words — the reason an absence was excused, or a note
+  /// about the session. Not a medical record; nothing sensitive belongs here.
+  note String?
+
+  /// Who took the register, and when it was actually taken — which is not the
+  /// session's own time, and is what tells a register filled in a week later
+  /// from one filled in on the pitch.
+  recordedById String?
+  recordedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// A player is either at a session or not; there is no second answer.
+  @@unique([trainingSessionId, playerId])
+  @@index([playerId, recordedAt])
+  @@index([trainingSessionId, status])
 }

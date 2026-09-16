@@ -145,7 +145,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | People | Person, Player, Guardian, PlayerGuardian, Staff, StaffTeam | 5 |
 | Enrollment | SchoolEnrollment, TeamMembership | 6 |
 | Journey | PlayerJourneyEvent | 7 |
-| Training | TrainingSession, TrainingPlan, TrainingExercise (✅ ۸)، Attendance (۹) | 8–9 |
+| Training | TrainingSession, TrainingPlan, TrainingExercise (✅ ۸)، Attendance (✅ ۹) | 8–9 |
 | Talent | Tryout, TryoutApplication, Screening, EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore | 10–12 |
 | Competition | Match, MatchLineup, PlayerMatchStat | 13 |
 | Performance | PerformanceRecord | 14 |
@@ -168,3 +168,19 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 جایگزین: بررسی تعارض در Service، داخل Transaction و زیر `pg_advisory_xact_lock` روی همان تیم. این همان مسابقه‌ای را می‌گیرد که کلید یکتا قرار بود بگیرد، و استثنا را هم می‌فهمد.
 
 Migration دوم این فاز (`training_clash_is_checked_not_constrained`) دقیقاً همین تغییر است و عمداً squash نشده تا دلیلش در تاریخچه بماند.
+
+## 10. `timestamp without time zone` — دو قرارداد ناسازگار
+
+Prisma نوع `DateTime` را روی `timestamp without time zone` نگاشت می‌کند و آن را **UTC** می‌خواند. اما `node-postgres` یک `Date` جاوااسکریپتی را با **Offset محلی** روی همان ستون می‌نویسد.
+
+پس هر تاریخی که با SQL مستقیم (`e2e/support/db.ts`) نوشته شود و با Prisma خوانده شود، به اندازه Offset ماشین جابه‌جا می‌شود:
+
+```
+new Date("2026-09-16T13:02:00Z")
+  ├─ bind as Date  → ذخیره «۱۶:۳۲:۰۰» → Prisma می‌خواند 16:32Z  ✗
+  └─ bind as ISO   → ذخیره «۱۳:۰۲:۰۰» → Prisma می‌خواند 13:02Z  ✓
+```
+
+**قاعده: در Fixture ها همیشه `date.toISOString()` را Bind کنید، نه خود `Date` را.** تابع `utcParam` در `e2e/support/db.ts` همین کار را می‌کند.
+
+این تله از Phase 5 وجود داشت و تا Phase 9 هیچ تستی آن را نگرفت، چون هیچ تستی به ساعتِ دقیق یک تاریخ حساس نبود. اولین چیزی که آن را آشکار کرد، قاعده «حضور و غیاب برای جلسه‌ای که شروع نشده ثبت نمی‌شود» بود.

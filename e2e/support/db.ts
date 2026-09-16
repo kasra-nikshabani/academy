@@ -6,7 +6,24 @@ import { Client } from "pg";
  * The Prisma client is generated as ESM and cannot be loaded by Playwright's
  * CommonJS test runner, and these helpers only need a couple of statements —
  * so the tests talk to Postgres directly rather than bending the runtime.
+ *
+ * ## Always bind a timestamp with `utcParam`, never a `Date`
+ *
+ * Prisma maps `DateTime` to `timestamp without time zone` and reads it back as
+ * UTC. `pg` binds a JS `Date` to that column using the **machine's local
+ * offset**, so a fixture written here and read by the application comes back
+ * shifted by that offset — 3½ hours on a machine set to Tehran. Every date
+ * these fixtures wrote was wrong that way until a session scheduled "two hours
+ * ago" was refused as being in the future.
  */
+
+/**
+ * A timestamp bound so the stored wall clock *is* the UTC time, which is how
+ * Prisma will read it back. See the note above — this is not optional.
+ */
+function utcParam(date: Date): string {
+  return date.toISOString();
+}
 async function withClient<T>(run: (client: Client) => Promise<T>): Promise<T> {
   const client = new Client({ connectionString: process.env["DATABASE_URL"] });
   await client.connect();
@@ -453,7 +470,7 @@ export async function createTrainingSession(params: {
       `SELECT id FROM "Season"
         WHERE "startDate" <= $1 AND "endDate" >= $1
         ORDER BY "startYear" DESC LIMIT 1`,
-      [params.startsAt],
+      [utcParam(params.startsAt)],
     );
     const seasonId = seasonRows[0]?.id;
     if (!seasonId) {
@@ -472,8 +489,8 @@ export async function createTrainingSession(params: {
       [
         params.teamId,
         seasonId,
-        params.startsAt,
-        endsAt,
+        utcParam(params.startsAt),
+        utcParam(endsAt),
         params.location ?? "زمین آزمایشی",
       ],
     );
@@ -500,7 +517,7 @@ export async function createPlayerBornIn(jalaliYear: number): Promise<string> {
        RETURNING "Player".id`,
       [
         // Mid-year, so the Jalali year is unambiguous either side of Nowruz.
-        new Date(Date.UTC(jalaliYear + 621, 7, 15, 9)),
+        utcParam(new Date(Date.UTC(jalaliYear + 621, 7, 15, 9))),
         `AGE-${unique}-${Date.now() % 100000}`,
         `ت${unique}${Date.now() % 10000}`,
       ],

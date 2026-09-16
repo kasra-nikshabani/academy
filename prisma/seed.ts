@@ -846,6 +846,65 @@ async function main(): Promise<void> {
 
     console.info(`  \u2713 ${sessionCount} training sessions (this week)`);
 
+    // --- attendance -------------------------------------------------------
+    //
+    // Only for sessions that have already been held. A register for a session
+    // that has not started yet would be a record of something that has not
+    // happened — which is exactly what the service refuses.
+    const heldSessions = await prisma.trainingSession.findMany({
+      where: { status: "COMPLETED", startsAt: { lte: now } },
+      orderBy: { startsAt: "asc" },
+    });
+
+    let attendanceCount = 0;
+
+    for (const [index, held] of heldSessions.entries()) {
+      const squad = await prisma.teamMembership.findMany({
+        where: {
+          teamId: held.teamId,
+          seasonId: held.seasonId,
+          status: "ACTIVE",
+          leftAt: null,
+        },
+        select: { playerId: true },
+        orderBy: { createdAt: "asc" },
+      });
+
+      for (const [position, member] of squad.entries()) {
+        // Mostly present, with one late and one excused across the week, so
+        // the summary on a player page is not a flat 100%.
+        const status =
+          index === 0 && position === 1
+            ? "LATE"
+            : index === 1 && position === 0
+              ? "EXCUSED"
+              : "PRESENT";
+
+        await prisma.attendance.upsert({
+          where: {
+            trainingSessionId_playerId: {
+              trainingSessionId: held.id,
+              playerId: member.playerId,
+            },
+          },
+          update: {},
+          create: {
+            trainingSessionId: held.id,
+            playerId: member.playerId,
+            status,
+            ...(status === "LATE" ? { minutesLate: 12 } : {}),
+            ...(status === "EXCUSED"
+              ? { note: "با اطلاع قبلی — مراسم خانوادگی" }
+              : {}),
+            recordedAt: held.endsAt,
+          },
+        });
+        attendanceCount += 1;
+      }
+    }
+
+    console.info(`  \u2713 ${attendanceCount} attendance records`);
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );

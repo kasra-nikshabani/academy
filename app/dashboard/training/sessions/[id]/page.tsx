@@ -10,8 +10,19 @@ import {
   TRAINING_STATUS_LABEL,
   TRAINING_TYPE_LABEL,
 } from "@/components/training/training-meta";
+import { AttendanceSheet } from "@/components/training/attendance-sheet";
 import { requireUser } from "@/lib/auth";
 import { getTrainingSession } from "@/lib/services/training.service";
+import {
+  canReadRegister,
+  getOwnRowsForSession,
+  getSessionRegister,
+} from "@/lib/services/attendance.service";
+import { hasPermission } from "@/lib/permissions";
+import {
+  ATTENDANCE_STATUS_CLASS,
+  ATTENDANCE_STATUS_LABEL,
+} from "@/components/training/training-meta";
 import { durationMinutes } from "@/lib/services/training-time";
 import { formatJalaliLong, formatTimeRange } from "@/lib/utils/date";
 import { toPersianDigits } from "@/lib/utils/number";
@@ -44,6 +55,14 @@ export default async function TrainingSessionPage(props: {
 
   const minutes = durationMinutes(session);
   const exercises = session.plan?.exercises ?? [];
+
+  // A coach gets the register; a player or parent gets their own row and
+  // never learns who else was missing (docs/BUSINESS_RULES.md §14).
+  const showRegister = await canReadRegister(caller, session.teamId);
+  const [register, ownRows] = await Promise.all([
+    showRegister ? getSessionRegister(caller, session.id) : null,
+    showRegister ? [] : getOwnRowsForSession(caller, session.id),
+  ]);
 
   return (
     <>
@@ -190,6 +209,74 @@ export default async function TrainingSessionPage(props: {
           </CardContent>
         </Card>
       </div>
+
+      {register ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>حضور و غیاب</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {register.rows.length === 0 ? (
+              <EmptyState
+                icon={ListChecks}
+                title="ترکیب این تیم در این فصل خالی است"
+                description="حضور و غیاب فقط برای بازیکنان ترکیب تیم ثبت می‌شود."
+              />
+            ) : (
+              <>
+                {session.status === "CANCELLED" ? (
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    جلسه لغو شده است؛ حضور و غیاب برای آن ثبت نمی‌شود.
+                  </p>
+                ) : null}
+                <AttendanceSheet
+                  sessionId={session.id}
+                  rows={register.rows}
+                  editable={
+                    hasPermission(caller, "attendance:write") &&
+                    session.status !== "CANCELLED" &&
+                    session.startsAt <= new Date()
+                  }
+                />
+              </>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {ownRows.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>حضور و غیاب</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-2 text-sm">
+              {ownRows.map(({ playerId, row }) => (
+                <li key={playerId} className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "rounded-md px-2 py-0.5 text-xs",
+                      ATTENDANCE_STATUS_CLASS[row.status],
+                    )}
+                  >
+                    {ATTENDANCE_STATUS_LABEL[row.status]}
+                  </span>
+                  {row.minutesLate ? (
+                    <span className="text-xs text-muted-foreground">
+                      {toPersianDigits(row.minutesLate)} دقیقه تأخیر
+                    </span>
+                  ) : null}
+                  {row.note ? (
+                    <span className="text-xs text-muted-foreground">
+                      {row.note}
+                    </span>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      ) : null}
 
       {session.notes ? (
         <Card>
