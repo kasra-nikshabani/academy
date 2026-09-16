@@ -1,3 +1,6 @@
+// Test setup talks to the database and signs OTP hashes, so it needs the
+// same environment the app runs with.
+import "dotenv/config";
 import { defineConfig, devices } from "@playwright/test";
 
 const PORT = 3200;
@@ -5,6 +8,8 @@ const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: "./e2e",
+  // Removes the accounts, teams and players the fixtures create.
+  globalTeardown: "./e2e/global-teardown.ts",
   fullyParallel: true,
   forbidOnly: Boolean(process.env["CI"]),
   retries: process.env["CI"] ? 2 : 0,

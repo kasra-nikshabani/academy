@@ -2,7 +2,10 @@
 
 سامانه مدیریت آکادمی باشگاه فولاد مبارکه سپاهان — چندرشته‌ای، چند رده سنی، RTL و Production-Grade.
 
-> **وضعیت فعلی:** Phase 0 (Foundation) تکمیل شده است. هنوز هیچ Domain Model، احراز هویت یا پنل کاربری پیاده‌سازی نشده.
+> **وضعیت فعلی:** فازهای ۰ تا ۸ تکمیل شده‌اند.
+> ورود با موبایل و OTP، نقش‌ها و مجوزها، ساختار آکادمی، افراد، ثبت‌نام و عضویت، مسیر بازیکن، و **تمرین** —
+> همراه با Scope کامل: مربی فقط بازیکنان و تقویم تیم‌های خودش، ولی فقط فرزندان خودش.
+> حضور و غیاب از Phase 9 شروع می‌شود.
 > نقشه راه در [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
 ## Stack
@@ -34,14 +37,30 @@ pnpm install
 cp .env.example .env     # سپس مقادیر را پر کنید
 pnpm db:up               # اجرای PostgreSQL روی پورت 5436
 pnpm db:generate         # تولید Prisma Client
+pnpm db:seed             # حساب‌های ساختگی برای توسعه
 pnpm dev                 # http://localhost:3200
 ```
+
+برای ورود، یکی از شماره‌های Seed را در `/login` وارد کنید؛ کد تأیید در خروجی Dev Server چاپ می‌شود.
+
+| شماره | نقش |
+|---|---|
+| `09120000001` | مدیر سیستم |
+| `09120000002` | مدیر آکادمی |
+| `09120000003` | کادر فنی |
+| `09120000004` | بازیکن تیم اصلی |
+| `09120000005` | ولی |
+| `09120000006` | مربی که ولی هم هست |
+
+> پس از هر `pnpm db:migrate`، Dev Server را دوباره راه‌اندازی کنید — نسخه قبلی Prisma Client در حافظه می‌ماند.
 
 بررسی سلامت سیستم:
 
 ```bash
 curl http://localhost:3200/api/v1/health
 ```
+
+مرجع Design System: <http://localhost:3200/style-guide>
 
 ## دستورها
 
@@ -52,11 +71,13 @@ curl http://localhost:3200/api/v1/health
 | `pnpm typecheck` | بررسی TypeScript |
 | `pnpm lint` | ESLint |
 | `pnpm format` | Prettier |
+| `pnpm ui:fix` | اصلاح ایمپورت‌ها پس از `shadcn add` |
 | `pnpm test` | تست‌های Unit و Integration |
 | `pnpm test:e2e` | تست‌های End-to-End |
 | `pnpm verify` | typecheck + lint + test + build |
 | `pnpm db:up` / `pnpm db:down` | بالا/پایین آوردن دیتابیس |
 | `pnpm db:migrate` | اجرای Migration در Development |
+| `pnpm db:seed` | ساخت حساب‌های ساختگی برای توسعه |
 | `pnpm db:studio` | Prisma Studio |
 
 ## مستندات

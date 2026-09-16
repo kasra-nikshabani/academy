@@ -4,6 +4,8 @@ allowBuilds:
   # Prisma downloads/builds its query engine during postinstall — required.
   "@prisma/engines": true
   prisma: true
+  # esbuild powers tsx, which runs prisma/seed.ts.
+  esbuild: true
   # Revisit in Phase 20 (image optimization) if sharp is needed at runtime.
   sharp: false
   unrs-resolver: false
