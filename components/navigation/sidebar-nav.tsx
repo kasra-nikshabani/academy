@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
+  ClipboardList,
+  Dumbbell,
   GraduationCap,
   LayoutDashboard,
   Shapes,
@@ -31,7 +33,9 @@ export type NavIconName =
   | "schools"
   | "teams"
   | "players"
-  | "staff";
+  | "staff"
+  | "training"
+  | "plans";
 
 const ICONS: Record<NavIconName, LucideIcon> = {
   home: LayoutDashboard,
@@ -42,6 +46,8 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   teams: Users,
   players: UsersRound,
   staff: UserCog,
+  training: Dumbbell,
+  plans: ClipboardList,
 };
 
 export interface NavItem {

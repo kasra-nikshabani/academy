@@ -54,6 +54,12 @@ yarn-error.log*
 *.swp
 Thumbs.db
 
+# --- agent / editor tooling ---
+# Local run configuration for the preview pane. Written per machine (ports and
+# commands differ), and the repo deliberately keeps agent tool files out —
+# `prisma init` once pulled unvetted instruction files in here.
+/.claude
+
 # --- misc ---
 .vercel
 .turbo

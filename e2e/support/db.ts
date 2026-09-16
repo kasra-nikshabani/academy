@@ -180,6 +180,48 @@ async function insertPlayer(client: Client, label: string): Promise<string> {
 }
 
 /**
+ * Two throwaway football U14 teams, named so the teardown can find them.
+ *
+ * Created per call rather than reusing the seeded squads: fixtures that write
+ * into shared teams grow a coach's scope a little on every run, and the
+ * assertions that eventually break are in some other test entirely.
+ */
+async function insertTeamPair(client: Client): Promise<[string, string]> {
+  personSequence += 1;
+  const unique = `${(process.pid % 1000).toString().padStart(3, "0")}${personSequence
+    .toString()
+    .padStart(3, "0")}${Date.now() % 100000}`;
+
+  const { rows: bandRows } = await client.query<{
+    id: string;
+    sportId: string;
+  }>(
+    `SELECT ag.id, ag."sportId" FROM "AgeGroup" ag
+       JOIN "Sport" s ON s.id = ag."sportId"
+      WHERE s.slug = 'football' AND ag.code = 'U14' LIMIT 1`,
+  );
+  const band = bandRows[0]!;
+
+  const teamIds: string[] = [];
+  for (const suffix of ["own", "other"]) {
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO "Team" ("id","sportId","ageGroupId","slug","name","isActive","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, true, now(), now())
+       RETURNING id`,
+      [
+        band.sportId,
+        band.id,
+        `e2e-${unique}-${suffix}`,
+        `تیم آزمایشی ${suffix === "own" ? "خودی" : "دیگر"} ${unique}`,
+      ],
+    );
+    teamIds.push(rows[0]!.id);
+  }
+
+  return teamIds as [string, string];
+}
+
+/**
  * A guardian account linked to one child, plus an unrelated child.
  *
  * The second id is the point: it is what the parent must not be able to reach
@@ -249,6 +291,7 @@ export async function createParentWithChild(mobile: string): Promise<{
  */
 export async function createCoachWithSquad(mobile: string): Promise<{
   teamId: string;
+  otherTeamId: string;
   squadPlayerId: string;
   otherTeamPlayerId: string;
 }> {
@@ -275,11 +318,6 @@ export async function createCoachWithSquad(mobile: string): Promise<{
       [userId],
     );
 
-    personSequence += 1;
-    const unique = `${(process.pid % 1000).toString().padStart(3, "0")}${personSequence
-      .toString()
-      .padStart(3, "0")}${Date.now() % 100000}`;
-
     const { rows: staffRows } = await client.query<{ id: string }>(
       `WITH p AS (
          INSERT INTO "Person" ("id","firstName","lastName","userId","createdAt","updatedAt")
@@ -294,32 +332,7 @@ export async function createCoachWithSquad(mobile: string): Promise<{
     const staffId = staffRows[0]!.id;
 
     // Two teams that belong to this test alone.
-    const { rows: bandRows } = await client.query<{
-      id: string;
-      sportId: string;
-    }>(
-      `SELECT ag.id, ag."sportId" FROM "AgeGroup" ag
-         JOIN "Sport" s ON s.id = ag."sportId"
-        WHERE s.slug = 'football' AND ag.code = 'U14' LIMIT 1`,
-    );
-    const band = bandRows[0]!;
-
-    const teamIds: string[] = [];
-    for (const suffix of ["own", "other"]) {
-      const { rows } = await client.query<{ id: string }>(
-        `INSERT INTO "Team" ("id","sportId","ageGroupId","slug","name","isActive","createdAt","updatedAt")
-         VALUES (gen_random_uuid()::text, $1, $2, $3, $4, true, now(), now())
-         RETURNING id`,
-        [
-          band.sportId,
-          band.id,
-          `e2e-${unique}-${suffix}`,
-          `تیم آزمایشی ${suffix === "own" ? "خودی" : "دیگر"} ${unique}`,
-        ],
-      );
-      teamIds.push(rows[0]!.id);
-    }
-    const [teamId, otherTeamId] = teamIds as [string, string];
+    const [teamId, otherTeamId] = await insertTeamPair(client);
 
     await client.query(
       `INSERT INTO "StaffTeam" ("id","staffId","teamId","role","assignedAt","createdAt")
@@ -347,7 +360,124 @@ export async function createCoachWithSquad(mobile: string): Promise<{
       );
     }
 
-    return { teamId, squadPlayerId, otherTeamPlayerId };
+    return { teamId, otherTeamId, squadPlayerId, otherTeamPlayerId };
+  });
+}
+
+/**
+ * A guardian whose child is in a squad, plus a squad the child is not in.
+ *
+ * Training is the first thing a parent signs in for, and the pair of teams is
+ * what proves the line: they see when their own child trains, and nothing of
+ * the other squad's week.
+ */
+export async function createParentOfSquadPlayer(mobile: string): Promise<{
+  childId: string;
+  teamId: string;
+  otherTeamId: string;
+}> {
+  assertNotSeeded(mobile);
+
+  return withClient(async (client) => {
+    await client.query(`DELETE FROM "OtpCode" WHERE "mobile" = $1`, [mobile]);
+    await client.query(
+      `INSERT INTO "User" ("id","mobile","status","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text, $1, 'ACTIVE', now(), now())
+       ON CONFLICT ("mobile") DO UPDATE SET "status" = 'ACTIVE'`,
+      [mobile],
+    );
+    const { rows: userRows } = await client.query<{ id: string }>(
+      `SELECT id FROM "User" WHERE mobile = $1`,
+      [mobile],
+    );
+    const userId = userRows[0]!.id;
+
+    await client.query(`DELETE FROM "UserRole" WHERE "userId" = $1`, [userId]);
+    await client.query(
+      `INSERT INTO "UserRole" ("id","userId","roleId","assignedAt")
+       SELECT gen_random_uuid()::text, $1, r.id, now() FROM "Role" r WHERE r.key = 'PARENT'`,
+      [userId],
+    );
+
+    const { rows: guardianRows } = await client.query<{ id: string }>(
+      `WITH p AS (
+         INSERT INTO "Person" ("id","firstName","lastName","userId","createdAt","updatedAt")
+         VALUES (gen_random_uuid()::text, 'ولی', 'آزمایشی', $1, now(), now())
+         RETURNING id
+       )
+       INSERT INTO "Guardian" ("id","personId","createdAt","updatedAt")
+       SELECT gen_random_uuid()::text, p.id, now(), now() FROM p
+       RETURNING "Guardian".id`,
+      [userId],
+    );
+    const guardianId = guardianRows[0]!.id;
+
+    const childId = await insertPlayer(client, "فرزند");
+    await client.query(
+      `INSERT INTO "PlayerGuardian" ("id","playerId","guardianId","relation","isPrimary","createdAt")
+       VALUES (gen_random_uuid()::text, $1, $2, 'FATHER', true, now())`,
+      [childId, guardianId],
+    );
+
+    const [teamId, otherTeamId] = await insertTeamPair(client);
+
+    const { rows: seasonRows } = await client.query<{ id: string }>(
+      `SELECT id FROM "Season" WHERE status = 'ACTIVE' LIMIT 1`,
+    );
+    await client.query(
+      `INSERT INTO "TeamMembership"
+         ("id","playerId","teamId","seasonId","status","isPrimary","joinedAt","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, $3, 'ACTIVE', true, now(), now(), now())`,
+      [childId, teamId, seasonRows[0]!.id],
+    );
+
+    return { childId, teamId, otherTeamId };
+  });
+}
+
+/**
+ * A training session, written straight to the database.
+ *
+ * Used where the session is the *setup* rather than the thing under test — a
+ * parent's read, a coach's narrowed calendar. Tests that are about creating a
+ * session go through the API like a coach would.
+ */
+export async function createTrainingSession(params: {
+  teamId: string;
+  startsAt: Date;
+  durationMinutes?: number;
+  location?: string;
+}): Promise<string> {
+  return withClient(async (client) => {
+    const { rows: seasonRows } = await client.query<{ id: string }>(
+      `SELECT id FROM "Season"
+        WHERE "startDate" <= $1 AND "endDate" >= $1
+        ORDER BY "startYear" DESC LIMIT 1`,
+      [params.startsAt],
+    );
+    const seasonId = seasonRows[0]?.id;
+    if (!seasonId) {
+      throw new Error(`no season covers ${params.startsAt.toISOString()}`);
+    }
+
+    const endsAt = new Date(
+      params.startsAt.getTime() + (params.durationMinutes ?? 90) * 60 * 1000,
+    );
+
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO "TrainingSession"
+         ("id","teamId","seasonId","type","status","startsAt","endsAt","location","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, 'TECHNICAL', 'SCHEDULED', $3, $4, $5, now(), now())
+       RETURNING id`,
+      [
+        params.teamId,
+        seasonId,
+        params.startsAt,
+        endsAt,
+        params.location ?? "زمین آزمایشی",
+      ],
+    );
+    return rows[0]!.id;
   });
 }
 

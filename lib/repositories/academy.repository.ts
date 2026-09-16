@@ -100,6 +100,20 @@ export function findActiveSeason(): Promise<Season | null> {
   return prisma.season.findFirst({ where: { status: "ACTIVE" } });
 }
 
+/**
+ * The season a given instant falls inside.
+ *
+ * Used when a training session is scheduled: the session belongs to the season
+ * it is *played* in, which is not always the one that happened to be active
+ * when a coach typed it in.
+ */
+export function findSeasonForDate(date: Date): Promise<Season | null> {
+  return prisma.season.findFirst({
+    where: { startDate: { lte: date }, endDate: { gte: date } },
+    orderBy: { startYear: "desc" },
+  });
+}
+
 export function createSeason(data: Prisma.SeasonCreateInput): Promise<Season> {
   return prisma.season.create({ data });
 }
@@ -225,6 +239,25 @@ export function findTeamById(id: string): Promise<TeamWithRelations | null> {
         },
       },
     },
+  });
+}
+
+/**
+ * Active teams, narrowed to a set of ids — `null` for every team.
+ *
+ * Feeds the training calendar's team filter, so the chips a caller is offered
+ * are exactly the calendars they are allowed to open.
+ */
+export function listTeamsByIds(
+  allowedTeamIds: readonly string[] | null,
+): Promise<Array<Pick<Team, "id" | "name" | "slug">>> {
+  return prisma.team.findMany({
+    where: {
+      isActive: true,
+      ...(allowedTeamIds === null ? {} : { id: { in: [...allowedTeamIds] } }),
+    },
+    orderBy: [{ ageGroup: { minAge: "asc" } }, { name: "asc" }],
+    select: { id: true, name: true, slug: true },
   });
 }
 

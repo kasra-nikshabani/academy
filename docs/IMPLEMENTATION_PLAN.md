@@ -14,8 +14,8 @@
 | 5 | Players / Guardians / Staff | ✅ تکمیل |
 | 6 | Enrollment | ✅ تکمیل |
 | 7 | Player Journey | ✅ تکمیل |
-| 8 | Training | ⏳ بعدی |
-| 9 | Attendance | ⛔ |
+| 8 | Training | ✅ تکمیل |
+| 9 | Attendance | ⏳ بعدی |
 | 10 | Tryouts | ⛔ |
 | 11 | Evaluation Engine | ⛔ |
 | 12 | Talent Pipeline | ⛔ |
@@ -168,9 +168,17 @@
 
 **سلامت تست‌ها:** `globalTeardown` اضافه شد؛ هر اجرای E2E دیتابیس را دقیقاً به وضعیت اولیه برمی‌گرداند (۴ بازیکن، ۵ تیم، ۸ کاربر، ۱۱ رویداد — قبل و بعد یکسان). پیش از آن هر اجرا حدود ۲۰ بازیکن جا می‌گذاشت.
 
-## Phase 8 — Training ⏳
+## Phase 8 — Training ✅
 
 `TrainingSession`، `TrainingPlan`، `TrainingExercise` — تقویم و برنامه تمرین.
+
+**تحویل شد:** مدل و دو Migration · تقویم هفتگی جلالی (شنبه‌محور) با فیلتر تیم در URL · صفحه جلسه با برنامه و تمرین‌هایش · فهرست برنامه‌ها · شش مسیر API · `resolveScheduleTeamIds` برای خواندن تقویم توسط بازیکن و ولی · قاعده تعارض زمانی زیر Advisory Lock · Seed با دو برنامه و یک هفته جلسه.
+
+**قواعد:** `docs/BUSINESS_RULES.md` §۱۳ · **تصمیم‌ها:** `docs/ARCHITECTURE.md` §۶.۸
+
+**دو نقص قدیمی که در این فاز پیدا و رفع شد:** `redact()` هر `Date` را به `{}` تبدیل می‌کرد (Phase 2) و یک تست Scope دو Promise رد‌شونده را هم‌زمان شروع می‌کرد (Phase 5).
+
+**فرم ایجاد و ویرایش جلسه** مثل فازهای قبل هنوز ساخته نشده؛ API کامل است و UI خواندنی. همه فرم‌های مدیریتی با هم ساخته می‌شوند.
 
 ## فازهای ۴ تا ۲۲
 

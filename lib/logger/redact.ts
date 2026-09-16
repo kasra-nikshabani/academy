@@ -81,6 +81,18 @@ export function redact(input: unknown, depth = 0): unknown {
     return input.map((item) => redact(item, depth + 1));
   }
 
+  /**
+   * A `Date` has no enumerable properties, so the object branch below would
+   * walk it and produce `{}` — silently destroying every timestamp ever
+   * logged. Found when a training session logged its start time and the line
+   * read `"startsAt":{}`.
+   */
+  if (input instanceof Date) {
+    return Number.isNaN(input.getTime())
+      ? "[INVALID_DATE]"
+      : input.toISOString();
+  }
+
   if (input instanceof Error) {
     return {
       name: input.name,

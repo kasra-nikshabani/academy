@@ -1,5 +1,8 @@
 import { findActiveSeason } from "@/lib/repositories/academy.repository";
-import { findPlayerIdsInTeams } from "@/lib/repositories/enrollment.repository";
+import {
+  findPlayerIdsInTeams,
+  findTeamIdsForPlayers,
+} from "@/lib/repositories/enrollment.repository";
 import {
   findPlayerIdsForUser,
   findTeamIdsForUser,
@@ -54,6 +57,40 @@ export async function resolvePlayerScope(
 ): Promise<readonly string[] | null> {
   const scope = await resolveScope(user);
   return scope.playerIds;
+}
+
+/**
+ * Teams whose **schedule** the caller may read.
+ *
+ * Wider than `scope.teamIds`, and deliberately a separate function rather than
+ * a widening of it. A player and a parent hold no `StaffTeam` row at all, so
+ * without this a player would open the training calendar and find it empty —
+ * but `scope.teamIds` is also what guards the squad list, and widening it
+ * there would hand a parent the names of every child in the team
+ * (docs/PRODUCT_SPEC.md §8).
+ *
+ * Built from the caller's **own** players — themselves, or their children —
+ * and not from the squads a coach can see. Otherwise a U14 coach would inherit
+ * the U16 calendar through a player who trains up an age group.
+ *
+ * Read-only: writing a session still needs the team in `scope.teamIds`.
+ */
+export async function resolveScheduleTeamIds(
+  user: AuthorizedUser,
+): Promise<readonly string[] | null> {
+  if (isUnscoped(user)) return null;
+
+  const [assignedTeamIds, ownPlayerIds] = await Promise.all([
+    findTeamIdsForUser(user.id),
+    findPlayerIdsForUser(user.id),
+  ]);
+
+  const season = ownPlayerIds.length > 0 ? await findActiveSeason() : null;
+  const squadTeamIds = season
+    ? await findTeamIdsForPlayers(ownPlayerIds, season.id)
+    : [];
+
+  return [...new Set([...assignedTeamIds, ...squadTeamIds])];
 }
 
 /** Convenience for services that only narrow by team. */

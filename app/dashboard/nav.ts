@@ -45,6 +45,20 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     });
   }
 
+  // Training sits above the people lists: for a coach it is the screen they
+  // open every day, and for a player or parent it is most of what they came
+  // for.
+  if (hasPermission(user, "training:read")) {
+    items.push(
+      { href: "/dashboard/training", label: "تمرین", icon: "training" },
+      {
+        href: "/dashboard/training/plans",
+        label: "برنامه‌های تمرین",
+        icon: "plans",
+      },
+    );
+  }
+
   if (hasPermission(user, "staff:read")) {
     items.push({
       href: "/dashboard/people/staff",
