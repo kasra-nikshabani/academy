@@ -9,11 +9,21 @@ test.describe("Phase 0 smoke", () => {
     await expect(html).toHaveAttribute("lang", "fa");
 
     await expect(
-      page.getByRole("heading", { name: /سامانه مدیریت آکادمی/, level: 1 }),
+      page.getByRole("heading", {
+        name: /آکادمی فولاد مبارکه سپاهان/,
+        level: 1,
+      }),
     ).toBeVisible();
 
     // The club crest identifies the page.
-    await expect(page.getByText("باشگاه فولاد مبارکه سپاهان")).toBeVisible();
+    await expect(
+      page.getByText("باشگاه فولاد مبارکه سپاهان").first(),
+    ).toBeVisible();
+
+    // And the page leads with the one thing a visitor can act on.
+    await expect(
+      page.getByRole("link", { name: /دوره‌های استعدادیابی/ }),
+    ).toBeVisible();
   });
 
   test("home page uses the Vazirmatn typeface", async ({ page }) => {

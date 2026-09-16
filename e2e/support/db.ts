@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import { Client } from "pg";
 
 /**
@@ -557,5 +558,100 @@ export async function removePlayer(playerId: string): Promise<void> {
 
     // Person cascades to Player, and Player cascades to the rest.
     await client.query(`DELETE FROM "Person" WHERE id = $1`, [personId]);
+  });
+}
+
+/**
+ * A structurally valid national code reserved for tests.
+ *
+ * Always begins `999`, which the seed never uses — that prefix is what the
+ * teardown deletes by. The public tryout form requires a national code, so
+ * unlike every other fixture these people *do* have one, and the teardown's
+ * usual "no national code means a test person" rule cannot see them.
+ *
+ * The tail is **random**, not derived from the process id. A pid-derived value
+ * is not unique — Playwright runs several workers at once and their pids
+ * collide modulo a thousand, which is how two tests in the same run ended up
+ * registering the same child (docs/PROJECT_RULES.md §6.1).
+ */
+export function testNationalCode(): string {
+  const tail = String(randomInt(0, 1_000_000)).padStart(6, "0");
+  const nine = `999${tail}`;
+
+  const sum = [...nine].reduce(
+    (total, digit, index) => total + Number(digit) * (10 - index),
+    0,
+  );
+  const remainder = sum % 11;
+  const check = remainder < 2 ? remainder : 11 - remainder;
+  return `${nine}${check}`;
+}
+
+/** A trial belonging to this test alone, open for registration right now. */
+export async function createTryout(params: {
+  ageGroupCode?: string;
+  status?: "OPEN" | "CLOSED" | "DRAFT";
+  opensAt?: Date;
+  closesAt?: Date;
+}): Promise<{ id: string; slug: string }> {
+  return withClient(async (client) => {
+    const { rows: bandRows } = await client.query<{
+      id: string;
+      sportId: string;
+    }>(
+      `SELECT ag.id, ag."sportId" FROM "AgeGroup" ag
+         JOIN "Sport" s ON s.id = ag."sportId"
+        WHERE s.slug = 'football' AND ag.code = $1 LIMIT 1`,
+      [params.ageGroupCode ?? "U14"],
+    );
+    const band = bandRows[0]!;
+
+    const { rows: seasonRows } = await client.query<{ id: string }>(
+      `SELECT id FROM "Season" WHERE status = 'ACTIVE' LIMIT 1`,
+    );
+
+    const slug = `e2e-tryout-${process.pid % 1000}-${Date.now() % 1000000}`;
+    const opensAt =
+      params.opensAt ?? new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const closesAt =
+      params.closesAt ?? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO "Tryout"
+         ("id","sportId","ageGroupId","seasonId","slug","title","city","venue",
+          "opensAt","closesAt","status","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text,$1,$2,$3,$4,$5,'اصفهان','زمین آزمایشی',
+               $6,$7,$8,now(),now())
+       RETURNING id`,
+      [
+        band.sportId,
+        band.id,
+        seasonRows[0]!.id,
+        slug,
+        `استعدادیابی آزمایشی ${slug}`,
+        utcParam(opensAt),
+        utcParam(closesAt),
+        params.status ?? "OPEN",
+      ],
+    );
+
+    return { id: rows[0]!.id, slug };
+  });
+}
+
+/** The application a registration produced, so a test can act on it. */
+export async function findApplicationByTrackingCode(
+  trackingCode: string,
+): Promise<{ id: string; playerId: string; status: string } | null> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{
+      id: string;
+      playerId: string;
+      status: string;
+    }>(
+      `SELECT id, "playerId", status FROM "TryoutApplication" WHERE "trackingCode" = $1`,
+      [trackingCode],
+    );
+    return rows[0] ?? null;
   });
 }

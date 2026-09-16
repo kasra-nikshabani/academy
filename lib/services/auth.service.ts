@@ -24,6 +24,8 @@ import {
   findUserByMobile,
   markUserLoggedIn,
 } from "@/lib/repositories/user.repository";
+import { createTryoutVerificationToken } from "@/lib/auth/tryout-verification";
+import type { OtpPurpose } from "@/lib/generated/prisma/enums";
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -60,8 +62,9 @@ function invalidCodeError(): UnauthenticatedError {
 async function assertWithinRateLimits(
   mobile: string,
   ipHash: string | undefined,
+  purpose: OtpPurpose = "LOGIN",
 ): Promise<void> {
-  const previous = await findLatestOtp(mobile, "LOGIN");
+  const previous = await findLatestOtp(mobile, purpose);
 
   if (previous) {
     const elapsedSeconds = Math.floor(
@@ -187,4 +190,73 @@ export async function verifyLoginOtp(
 
   const token = await createSessionToken({ sub: user.id, mobile: user.mobile });
   return { token, userId: user.id };
+}
+
+// --- public tryout registration ---------------------------------------------
+
+/**
+ * Issues a code for public tryout registration.
+ *
+ * Unlike the login code, this one is **always** delivered. There is no
+ * membership to protect here: anybody may register for a trial, so there is
+ * nothing to learn from the fact that a code arrived. The rate limits still
+ * apply, and they are counted separately from login so a family registering a
+ * child does not lock themselves out of signing in.
+ */
+export async function requestTryoutOtp(
+  mobile: string,
+  ip: string | null,
+): Promise<RequestOtpResult> {
+  const ipHash = hashIp(ip);
+  await assertWithinRateLimits(mobile, ipHash, "TRYOUT_REGISTRATION");
+
+  const code = generateOtpCode();
+  const record = await createOtpCode({
+    mobile,
+    purpose: "TRYOUT_REGISTRATION",
+    codeHash: hashOtpCode(mobile, code),
+    expiresAt: otpExpiryDate(),
+    ipHash,
+  });
+
+  await consumeOtherActiveOtps(mobile, "TRYOUT_REGISTRATION", record.id);
+
+  await getSmsProvider().send({
+    mobile,
+    text: `کد ثبت‌نام استعدادیابی سپاهان: ${code}`,
+  });
+
+  return {
+    cooldownSeconds: env.OTP_RESEND_COOLDOWN_SECONDS,
+    expiresInSeconds: env.OTP_TTL_SECONDS,
+  };
+}
+
+/**
+ * Checks a registration code and returns proof the number is held.
+ *
+ * The token it returns is the only thing the application submission trusts
+ * about the applicant, which is why it is signed rather than merely stored
+ * (lib/auth/tryout-verification.ts).
+ */
+export async function verifyTryoutOtp(
+  mobile: string,
+  code: string,
+): Promise<string> {
+  const record = await findLatestActiveOtp(mobile, "TRYOUT_REGISTRATION");
+
+  if (!record) throw invalidCodeError();
+  if (record.expiresAt.getTime() <= Date.now()) throw invalidCodeError();
+  if (record.attempts >= env.OTP_MAX_ATTEMPTS) throw invalidCodeError();
+
+  if (!verifyOtpCode(mobile, code, record.codeHash)) {
+    await incrementOtpAttempts(record.id);
+    logger.warn("failed tryout otp verification", { mobile, otpId: record.id });
+    throw invalidCodeError();
+  }
+
+  await consumeOtpCode(record.id);
+  logger.info("tryout registration mobile verified", { mobile });
+
+  return createTryoutVerificationToken(mobile);
 }

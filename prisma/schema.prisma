@@ -214,6 +214,7 @@ model Sport {
   ageGroups AgeGroup[]
   schools   School[]
   teams     Team[]
+  tryouts   Tryout[]
 
   @@index([isActive, displayOrder])
 }
@@ -250,7 +251,8 @@ model AgeGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  teams Team[]
+  teams   Team[]
+  tryouts Tryout[]
 
   @@unique([sportId, code])
   @@index([sportId, displayOrder])
@@ -278,6 +280,7 @@ model Season {
   schoolEnrollments SchoolEnrollment[]
   teamMemberships   TeamMembership[]
   trainingSessions  TrainingSession[]
+  tryouts           Tryout[]
 
   @@index([status])
   @@index([startYear])
@@ -451,11 +454,12 @@ model Player {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  guardians         PlayerGuardian[]
-  schoolEnrollments SchoolEnrollment[]
-  teamMemberships   TeamMembership[]
-  journeyEvents     PlayerJourneyEvent[]
-  attendance        Attendance[]
+  guardians          PlayerGuardian[]
+  schoolEnrollments  SchoolEnrollment[]
+  teamMemberships    TeamMembership[]
+  journeyEvents      PlayerJourneyEvent[]
+  attendance         Attendance[]
+  tryoutApplications TryoutApplication[]
 
   @@index([status])
 }
@@ -888,4 +892,156 @@ model Attendance {
   @@unique([trainingSessionId, playerId])
   @@index([playerId, recordedAt])
   @@index([trainingSessionId, status])
+}
+
+// ---------------------------------------------------------------------------
+// Talent — Phase 10
+//
+//   Tryout ──< TryoutApplication ──1 Screening
+//
+// The public half of the academy: anyone may register for a trial without an
+// account, proving only that they hold the phone number they gave.
+//
+// **An applicant who is already in the academy keeps their record.** A school
+// player trying out for a main team is the ordinary case, not an edge one, and
+// creating a second `Person` for them would fork their history at exactly the
+// moment it becomes interesting (BUSINESS_RULES §1).
+// ---------------------------------------------------------------------------
+
+enum TryoutStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+  COMPLETED
+}
+
+enum ApplicationStatus {
+  SUBMITTED
+  SCREENING
+  EVALUATION
+  ACCEPTED
+  REJECTED
+  WAITLIST
+  CANCELLED
+}
+
+enum ScreeningStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Tryout {
+  id String @id @default(cuid())
+
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Restrict)
+
+  /// The band being trialled. Required: a trial without an age band cannot
+  /// check whether an applicant is eligible, and "we will sort it out later"
+  /// is how a nine-year-old ends up on an under-18 list.
+  ageGroupId String
+  ageGroup   AgeGroup @relation(fields: [ageGroupId], references: [id], onDelete: Restrict)
+
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  /// URL segment for the public page, e.g. /tryouts/u14-isfahan-1405
+  slug        String  @unique
+  title       String
+  description String?
+
+  city  String?
+  venue String?
+
+  /// When registration is open. Outside this window the form is closed even
+  /// if someone keeps the page open.
+  opensAt  DateTime
+  closesAt DateTime
+  /// When the trial is actually held, once it is known.
+  heldAt   DateTime?
+
+  /// Places available, when the club has set a limit. Null means unlimited.
+  capacity Int?
+
+  status TryoutStatus @default(DRAFT)
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  applications TryoutApplication[]
+
+  @@index([status, opensAt])
+  @@index([sportId, seasonId])
+}
+
+model TryoutApplication {
+  id String @id @default(cuid())
+
+  tryoutId String
+  tryout   Tryout @relation(fields: [tryoutId], references: [id], onDelete: Restrict)
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// What the applicant is given to follow their application with. Public, so
+  /// it carries no personal information and is never guessable in sequence.
+  trackingCode String @unique
+
+  status ApplicationStatus @default(SUBMITTED)
+
+  /// What the applicant said about themselves **at the time**. Kept on the
+  /// application rather than only on the player: a trial is judged against
+  /// what was claimed then, and the player record moves on.
+  position     String?
+  dominantFoot String?
+  heightCm     Int?
+  weightKg     Int?
+  previousClub String?
+  notes        String?
+
+  submittedAt DateTime @default(now())
+
+  /// The decision, once there is one.
+  decidedAt    DateTime?
+  decidedById  String?
+  decisionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  screening Screening?
+
+  /// One application per player per trial (CLAUDE.md §9).
+  @@unique([tryoutId, playerId])
+  @@index([tryoutId, status])
+  @@index([playerId])
+}
+
+/// The paperwork check that happens before anyone watches the player play.
+model Screening {
+  id String @id @default(cuid())
+
+  applicationId String            @unique
+  application   TryoutApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  status ScreeningStatus @default(PENDING)
+
+  /// The two things actually being checked, kept apart so a rejection can say
+  /// which one failed rather than leaving the family to guess.
+  ageEligible       Boolean?
+  documentsComplete Boolean?
+
+  note String?
+
+  checkedById String?
+  checkedAt   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
 }

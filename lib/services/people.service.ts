@@ -50,7 +50,14 @@ function isUniqueViolation(error: unknown): boolean {
  * Bounded: after a few attempts something other than contention is wrong, and
  * looping forever would turn a bug into a hung request.
  */
-async function createWithPlayerCode<T>(
+/**
+ * Allocates a player code and retries when two callers take the same one.
+ *
+ * Exported because tryout registration needs it too — and that is the place
+ * it matters most: a public form is where a dozen families register in the
+ * same minute (BUSINESS_RULES §1).
+ */
+export async function createWithPlayerCode<T>(
   seasonYear: number,
   write: (playerCode: string) => Promise<T>,
 ): Promise<T> {

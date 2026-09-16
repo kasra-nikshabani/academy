@@ -171,6 +171,9 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `TrainingWeek` | `components/training/training-week.tsx` |
 | `AttendanceSheet` | `components/training/attendance-sheet.tsx` |
 | `AttendanceSummary` | `components/training/attendance-summary.tsx` |
+| `TryoutRegistration` | `components/tryouts/tryout-registration.tsx` |
+| `ApplicationStatusLookup` | `components/tryouts/application-status-lookup.tsx` |
+| `ApplicationActions` | `components/tryouts/application-actions.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -191,6 +194,24 @@ PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸
 به‌جایش هر بازیکن یک ردیف است با یک کنترل چهارگزینه‌ای در همان خط، و فیلد توضیح فقط روی ردیف‌هایی باز می‌شود که استثنا هستند — بازیکن حاضر چیزی برای توضیح دادن ندارد.
 
 کنترل روی `RadioGroup` رادیکس ساخته شده تا پیمایش با کلید جهت و `aria-checked` درست باشد، اما ظاهرش یک نوار چهاربخشی است نه چهار دایره.
+
+### ثبت‌نام استعدادیابی — چرا یک صفحه و نه پنج
+
+`PRODUCT_SPEC` §۵ جریان را به‌صورت شماره → OTP → اطلاعات فردی → ورزشی → ولی → مرور → ثبت توصیف می‌کند. این مراحل در **یک** کامپوننت و **یک** نشانی پیاده شده‌اند، نه پنج Route.
+
+دلیل: خانواده‌ای که این فرم را روی گوشی پر می‌کند نباید بتواند با زدن دکمه Back جایش را گم کند، و هیچ‌کدام از این مراحل ارزش یک نشانی جدا را ندارند. تنها چیز ماندگاری که این جریان تولید می‌کند، کد پیگیری انتهای آن است — و آن هم در صفحه «پیگیری درخواست» دوباره قابل دسترسی است.
+
+**بخش ولی با تاریخ تولد ظاهر می‌شود، نه با یک تیک.** فرمی که می‌پرسد «آیا زیر ۱۸ سال است؟» جوابی را دعوت می‌کند که فرم را کوتاه‌تر کند.
+
+### دفتر تصمیم مدیریتی — ترتیب کار، ترتیب رابط
+
+در صفحه درخواست‌ها، دکمه‌های تصمیم تا وقتی غربالگری تأیید نشده اصلاً نمایش داده نمی‌شوند. ترتیبی که باشگاه کار می‌کند، همان ترتیبی است که رابط اجازه می‌دهد.
+
+### یک باگ کنتراست در `Button` variant=`outline`
+
+این Variant پس‌زمینه روشن خودش را می‌گذاشت اما رنگ متن را از والدش به ارث می‌برد. روی نوار تیره (Sidebar و Header عمومی) نتیجه، متن نزدیک‌به‌سفید روی دکمه نزدیک‌به‌سفید بود — نسبت کنتراست حدود ۱٫۱، فقط با Hover خوانا (چون Hover رنگ را ست می‌کرد).
+
+اصلاح در خود Variant انجام شد نه در صفحه: هر Variant ای که پس‌زمینه می‌گذارد باید رنگ متنش را هم بگذارد.
 
 ### چرا بدون React Hook Form
 

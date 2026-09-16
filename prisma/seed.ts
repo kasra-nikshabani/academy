@@ -905,6 +905,186 @@ async function main(): Promise<void> {
 
     console.info(`  \u2713 ${attendanceCount} attendance records`);
 
+    // --- tryouts ----------------------------------------------------------
+    const u14Band = footballBands.find((band) => band.code === "U14")!;
+    const u16Band = footballBands.find((band) => band.code === "U16")!;
+
+    const DAY_MS = 24 * 60 * 60 * 1000;
+
+    const tryoutSeeds = [
+      {
+        slug: "football-u14-isfahan-1405",
+        title: "استعدادیابی فوتبال U14 — اصفهان",
+        description:
+          "آزمون ورودی رده نوجوانان آکادمی سپاهان برای فصل ۱۴۰۴-۱۴۰۵.",
+        ageGroupId: u14Band.id,
+        opensAt: new Date(now.getTime() - 7 * DAY_MS),
+        closesAt: new Date(now.getTime() + 21 * DAY_MS),
+        heldAt: new Date(now.getTime() + 28 * DAY_MS),
+        status: "OPEN" as const,
+        capacity: 60,
+      },
+      {
+        slug: "football-u16-isfahan-1405",
+        title: "استعدادیابی فوتبال U16 — اصفهان",
+        description: "مهلت ثبت‌نام این دوره به پایان رسیده است.",
+        ageGroupId: u16Band.id,
+        opensAt: new Date(now.getTime() - 60 * DAY_MS),
+        closesAt: new Date(now.getTime() - 20 * DAY_MS),
+        heldAt: new Date(now.getTime() - 10 * DAY_MS),
+        status: "CLOSED" as const,
+        capacity: 40,
+      },
+    ];
+
+    const tryoutIds = new Map<string, string>();
+
+    for (const item of tryoutSeeds) {
+      const record = await prisma.tryout.upsert({
+        where: { slug: item.slug },
+        update: {
+          status: item.status,
+          opensAt: item.opensAt,
+          closesAt: item.closesAt,
+        },
+        create: {
+          sportId: football.id,
+          ageGroupId: item.ageGroupId,
+          seasonId: season.id,
+          slug: item.slug,
+          title: item.title,
+          description: item.description,
+          city: "اصفهان",
+          venue: "مجموعه ورزشی فولاد مبارکه سپاهان",
+          opensAt: item.opensAt,
+          closesAt: item.closesAt,
+          heldAt: item.heldAt,
+          capacity: item.capacity,
+          status: item.status,
+        },
+      });
+      tryoutIds.set(item.slug, record.id);
+    }
+
+    console.info(`  \u2713 ${tryoutSeeds.length} tryouts`);
+
+    // Two applicants for the open trial, at different points in the funnel —
+    // so the manager's page has something to show on a fresh database.
+    const applicantSeeds = [
+      {
+        firstName: "کیان",
+        lastName: "مرادی",
+        nine: "400000001",
+        birthYear: 1392,
+        trackingCode: "SEP-T-SEEDA001",
+        screening: null,
+      },
+      {
+        firstName: "آرش",
+        lastName: "صادقی",
+        nine: "400000002",
+        birthYear: 1393,
+        trackingCode: "SEP-T-SEEDB002",
+        screening: "APPROVED" as const,
+      },
+    ];
+
+    const openTryoutId = tryoutIds.get("football-u14-isfahan-1405")!;
+    let applicationCount = 0;
+
+    /**
+     * The next free player code, read from the database each time.
+     *
+     * The sample-player loop above keeps its own counter, which only advances
+     * when it actually creates someone — so on a second run it is still at 1
+     * and reusing it here collides with `SEP-1405-0001`.
+     */
+    async function nextFreePlayerCode(): Promise<string> {
+      const prefix = `SEP-${season.startYear}-`;
+      const last = await prisma.player.findFirst({
+        where: { playerCode: { startsWith: prefix } },
+        orderBy: { playerCode: "desc" },
+        select: { playerCode: true },
+      });
+      const next = last ? Number(last.playerCode.slice(prefix.length)) + 1 : 1;
+      return `${prefix}${String(next).padStart(4, "0")}`;
+    }
+
+    for (const applicant of applicantSeeds) {
+      const code = nationalCode(applicant.nine);
+
+      const found = await prisma.person.findUnique({
+        where: { nationalCode: code },
+        include: { player: true },
+      });
+
+      const person =
+        found ??
+        (await prisma.person.create({
+          data: {
+            firstName: applicant.firstName,
+            lastName: applicant.lastName,
+            nationalCode: code,
+            dateOfBirth: new Date(
+              Date.UTC(applicant.birthYear + 621, 7, 15, 9),
+            ),
+            gender: "MALE",
+            city: "اصفهان",
+            player: { create: { playerCode: await nextFreePlayerCode() } },
+          },
+          include: { player: true },
+        }));
+
+      if (!person.player) continue;
+
+      const existing = await prisma.tryoutApplication.findUnique({
+        where: {
+          tryoutId_playerId: {
+            tryoutId: openTryoutId,
+            playerId: person.player.id,
+          },
+        },
+      });
+
+      if (!existing) {
+        await prisma.tryoutApplication.create({
+          data: {
+            tryoutId: openTryoutId,
+            playerId: person.player.id,
+            trackingCode: applicant.trackingCode,
+            status:
+              applicant.screening === "APPROVED" ? "EVALUATION" : "SUBMITTED",
+            position: "هافبک",
+            dominantFoot: "RIGHT",
+            screening: {
+              create: applicant.screening
+                ? {
+                    status: applicant.screening,
+                    ageEligible: true,
+                    documentsComplete: true,
+                    checkedAt: now,
+                  }
+                : {},
+            },
+          },
+        });
+
+        await prisma.playerJourneyEvent.create({
+          data: {
+            playerId: person.player.id,
+            type: "TRYOUT_REGISTERED",
+            title: "ثبت‌نام در استعدادیابی فوتبال U14 — اصفهان",
+            description: `کد پیگیری ${applicant.trackingCode}`,
+            seasonId: season.id,
+          },
+        });
+      }
+
+      applicationCount += 1;
+    }
+
+    console.info(`  \u2713 ${applicationCount} tryout applications`);
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );
