@@ -6,7 +6,9 @@ import { dbOr, type Db } from "./transaction";
 
 const TRYOUT_INCLUDE = {
   sport: { select: { id: true, name: true, slug: true } },
-  ageGroup: { select: { id: true, code: true, name: true, minAge: true, maxAge: true } },
+  ageGroup: {
+    select: { id: true, code: true, name: true, minAge: true, maxAge: true },
+  },
   season: { select: { id: true, name: true, startYear: true } },
   _count: { select: { applications: true } },
 } satisfies Prisma.TryoutInclude;
@@ -46,7 +48,8 @@ export async function listTryouts(params: {
     ...(params.publicOnly ? { status: { in: ["OPEN", "CLOSED"] } } : {}),
   };
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.tryout.findMany({
       where,
       skip: params.skip,
@@ -71,8 +74,20 @@ export function findTryoutBySlug(slug: string) {
   });
 }
 
-export function createTryout(data: Prisma.TryoutCreateInput) {
-  return prisma.tryout.create({ data, include: TRYOUT_INCLUDE });
+/**
+ * Writes the row, then reads it back with its relations.
+ *
+ * `TRYOUT_INCLUDE` carries a `_count`, which Prisma answers with a second
+ * statement, and it wraps the pair in an implicit transaction — where the pg
+ * adapter then queries a client that is still busy. Deprecated in pg 8, an
+ * error in pg 9 (docs/ARCHITECTURE.md §6.8).
+ */
+export async function createTryout(data: Prisma.TryoutCreateInput) {
+  const created = await prisma.tryout.create({ data, select: { id: true } });
+  return prisma.tryout.findUniqueOrThrow({
+    where: { id: created.id },
+    include: TRYOUT_INCLUDE,
+  });
 }
 
 export function updateTryout(id: string, data: Prisma.TryoutUpdateInput) {
@@ -129,7 +144,9 @@ export function findApplicationForTracking(
       trackingCode,
       OR: [
         { player: { person: { mobile } } },
-        { player: { guardians: { some: { guardian: { person: { mobile } } } } } },
+        {
+          player: { guardians: { some: { guardian: { person: { mobile } } } } },
+        },
       ],
     },
     select: {
@@ -148,7 +165,9 @@ export function findApplicationForTracking(
           city: true,
         },
       },
-      player: { select: { person: { select: { firstName: true, lastName: true } } } },
+      player: {
+        select: { person: { select: { firstName: true, lastName: true } } },
+      },
     },
   });
 }

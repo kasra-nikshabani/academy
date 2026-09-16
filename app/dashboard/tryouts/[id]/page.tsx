@@ -13,6 +13,12 @@ import {
 import { requireUser } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { listTeams } from "@/lib/services/academy.service";
+import { listStaff } from "@/lib/services/people.service";
+import {
+  listEvaluationTemplates,
+  summariseApplicationEvaluations,
+} from "@/lib/services/evaluation.service";
+import { isUnscoped } from "@/lib/permissions";
 import {
   getTryout,
   getTryoutFunnel,
@@ -39,13 +45,26 @@ export default async function TryoutApplicationsPage(props: {
   const { id } = await props.params;
 
   const tryout = await getTryout(caller, id);
-  const [applications, funnel, teams] = await Promise.all([
+  const [applications, funnel, teams, staff, templates] = await Promise.all([
     listTryoutApplications(caller, id),
     getTryoutFunnel(caller, id),
     listTeams(caller, { ageGroupId: tryout.ageGroupId }),
+    listStaff(caller, { page: 1, pageSize: 100 }),
+    listEvaluationTemplates(caller, { sportId: tryout.sportId }),
   ]);
 
+  const evaluationSummary = await summariseApplicationEvaluations(
+    caller,
+    applications.map((application) => application.id),
+  );
+
   const canDecide = hasPermission(caller, "tryout:decide");
+  const canAssignEvaluation = isUnscoped(caller);
+
+  const evaluators = staff.items.map((member) => ({
+    id: member.id,
+    name: `${member.person.firstName} ${member.person.lastName}`,
+  }));
 
   const metrics = [
     { label: "کل درخواست‌ها", value: funnel.total },
@@ -131,6 +150,23 @@ export default async function TryoutApplicationsPage(props: {
                 : "—",
           },
           {
+            id: "evaluation",
+            header: "ارزیابی",
+            hideOnMobile: true,
+            cell: (row) => {
+              const summary = evaluationSummary.get(row.id);
+              if (!summary || summary.average === null) return "—";
+              return (
+                <span className="text-sm tabular-nums">
+                  {toPersianDigits(summary.average)} از ۱۰
+                  <span className="ms-1 text-xs text-muted-foreground">
+                    ({toPersianDigits(summary.submitted)} ارزیاب)
+                  </span>
+                </span>
+              );
+            },
+          },
+          {
             id: "status",
             header: "وضعیت",
             cell: (row) => (
@@ -153,6 +189,14 @@ export default async function TryoutApplicationsPage(props: {
                   name: team.name,
                 }))}
                 canDecide={canDecide}
+                canAssignEvaluation={canAssignEvaluation}
+                evaluators={evaluators}
+                templates={templates.map((template) => ({
+                  id: template.id,
+                  title: template.title,
+                }))}
+                playerId={row.playerId}
+                evaluationCount={evaluationSummary.get(row.id)?.submitted ?? 0}
               />
             ),
           },

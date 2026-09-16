@@ -101,7 +101,8 @@ export async function listEnrollments(params: {
       : { playerId: { in: [...params.allowedPlayerIds] } }),
   };
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.schoolEnrollment.findMany({
       where,
       skip: params.skip,

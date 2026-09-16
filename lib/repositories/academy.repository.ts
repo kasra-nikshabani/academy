@@ -199,7 +199,8 @@ export async function listTeams(params: {
     ...(params.includeInactive ? {} : { isActive: true }),
   };
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.team.findMany({
       where,
       orderBy: [{ ageGroup: { minAge: "asc" } }, { name: "asc" }],

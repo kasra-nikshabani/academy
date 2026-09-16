@@ -37,7 +37,9 @@ const createdTryoutIds: string[] = [];
 let codeSequence = 0;
 function nationalCode(): string {
   codeSequence += 1;
-  const nine = String(600000000 + ((process.pid * 1000 + codeSequence) % 99999999)).slice(0, 9);
+  const nine = String(
+    600000000 + ((process.pid * 1000 + codeSequence) % 99999999),
+  ).slice(0, 9);
   const sum = [...nine].reduce(
     (total, digit, index) => total + Number(digit) * (10 - index),
     0,
@@ -91,7 +93,9 @@ afterAll(async () => {
 
 /** Registers a fresh applicant and returns the tracking code. */
 async function register(
-  overrides: Partial<Parameters<typeof tryouts.submitTryoutApplication>[2]> = {},
+  overrides: Partial<
+    Parameters<typeof tryouts.submitTryoutApplication>[2]
+  > = {},
   mobile = "09121110000",
 ) {
   const code = overrides.nationalCode ?? nationalCode();
@@ -154,8 +158,20 @@ describe("public registration", () => {
    * ordinary path in, and a second record would fork their history.
    */
   it("reuses an existing player rather than creating a second one", async () => {
+    /**
+     * Chosen deterministically, and explicitly not an applicant.
+     *
+     * An unordered `findFirst` returns whichever row Postgres feels like, so
+     * this sometimes picked one of the seeded *applicants* — who already has
+     * an application on this trial — and the test failed on a conflict about
+     * once in ten runs (docs/PROJECT_RULES.md §6.1).
+     */
     const seededPlayer = await prisma.player.findFirstOrThrow({
-      where: { person: { nationalCode: { not: null } } },
+      where: {
+        person: { nationalCode: { not: null } },
+        tryoutApplications: { none: { tryoutId } },
+      },
+      orderBy: { playerCode: "asc" },
       include: { person: true },
     });
 
@@ -187,8 +203,14 @@ describe("public registration", () => {
     expect(application.playerId).toBe(seededPlayer.id);
 
     await prisma.tryoutApplication.delete({ where: { trackingCode } });
+    // Only the entry this test wrote — matched by its own tracking code, so a
+    // seeded player's existing timeline is never touched.
     await prisma.playerJourneyEvent.deleteMany({
-      where: { playerId: seededPlayer.id, type: "TRYOUT_REGISTERED" },
+      where: {
+        playerId: seededPlayer.id,
+        type: "TRYOUT_REGISTERED",
+        description: { contains: trackingCode },
+      },
     });
   });
 
@@ -245,7 +267,9 @@ describe("public registration", () => {
   it("never returns a draft trial to the public", async () => {
     const draft = await prisma.tryout.create({
       data: {
-        sportId: (await prisma.sport.findFirstOrThrow({ where: { slug: "football" } })).id,
+        sportId: (
+          await prisma.sport.findFirstOrThrow({ where: { slug: "football" } })
+        ).id,
         ageGroupId: (
           await prisma.ageGroup.findFirstOrThrow({ where: { code: "U12" } })
         ).id,

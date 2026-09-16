@@ -1085,6 +1085,119 @@ async function main(): Promise<void> {
 
     console.info(`  \u2713 ${applicationCount} tryout applications`);
 
+    // --- evaluation -------------------------------------------------------
+    //
+    // One template across the four dimensions the club reports on, and one
+    // evaluation already waiting on the seeded coach's list — so the assigned
+    // route into a trial player is visible on a fresh database.
+    const templateTitle = "ارزیابی پایه فوتبال";
+
+    let template = await prisma.evaluationTemplate.findFirst({
+      where: { title: templateTitle, sportId: football.id },
+      include: { criteria: true },
+    });
+
+    if (!template) {
+      template = await prisma.evaluationTemplate.create({
+        data: {
+          sportId: football.id,
+          title: templateTitle,
+          description:
+            "معیارهای پیش‌فرض آکادمی برای ارزیابی بازیکن در آزمون ورودی و تمرین.",
+          criteria: {
+            create: [
+              {
+                dimension: "TECHNICAL",
+                title: "کنترل و لمس اول",
+                maxScore: 10,
+                weight: 2,
+                displayOrder: 0,
+              },
+              {
+                dimension: "TECHNICAL",
+                title: "پاس و دقت",
+                maxScore: 10,
+                weight: 2,
+                displayOrder: 1,
+              },
+              {
+                dimension: "TECHNICAL",
+                title: "شوت",
+                maxScore: 10,
+                weight: 1,
+                displayOrder: 2,
+              },
+              {
+                dimension: "PHYSICAL",
+                title: "سرعت",
+                maxScore: 10,
+                weight: 2,
+                displayOrder: 3,
+              },
+              {
+                dimension: "PHYSICAL",
+                title: "استقامت",
+                maxScore: 10,
+                weight: 1,
+                displayOrder: 4,
+              },
+              {
+                dimension: "MENTAL",
+                title: "تصمیم‌گیری زیر فشار",
+                maxScore: 10,
+                weight: 2,
+                displayOrder: 5,
+              },
+              {
+                dimension: "MENTAL",
+                title: "روحیه تیمی",
+                maxScore: 10,
+                weight: 1,
+                displayOrder: 6,
+              },
+              {
+                dimension: "OVERALL",
+                title: "پتانسیل کلی",
+                maxScore: 10,
+                weight: 3,
+                displayOrder: 7,
+              },
+            ],
+          },
+        },
+        include: { criteria: true },
+      });
+    }
+
+    console.info(
+      `  \u2713 1 evaluation template (${template.criteria.length} criteria)`,
+    );
+
+    // The applicant already past screening gets an evaluation waiting on the
+    // seeded coach — the assignment is how a coach reaches a trial player at
+    // all (docs/BUSINESS_RULES.md §16).
+    const pendingApplication = await prisma.tryoutApplication.findFirst({
+      where: { tryoutId: openTryoutId, status: "EVALUATION" },
+    });
+
+    if (pendingApplication && coachPerson.staff) {
+      const already = await prisma.evaluation.findFirst({
+        where: { applicationId: pendingApplication.id },
+      });
+
+      if (!already) {
+        await prisma.evaluation.create({
+          data: {
+            playerId: pendingApplication.playerId,
+            templateId: template.id,
+            evaluatorId: coachPerson.staff.id,
+            applicationId: pendingApplication.id,
+          },
+        });
+      }
+      console.info("  \u2713 1 evaluation assigned to the seeded coach");
+    }
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );

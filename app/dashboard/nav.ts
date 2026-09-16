@@ -67,6 +67,16 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     });
   }
 
+  // A coach reaches trial players through here and nowhere else — the
+  // assignment is their route in, not a tryout permission (BUSINESS_RULES §16).
+  if (hasPermission(user, "evaluation:read")) {
+    items.push({
+      href: "/dashboard/evaluations",
+      label: "ارزیابی‌ها",
+      icon: "evaluations",
+    });
+  }
+
   if (hasPermission(user, "staff:read")) {
     items.push({
       href: "/dashboard/people/staff",

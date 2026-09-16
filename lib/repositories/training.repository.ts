@@ -64,7 +64,8 @@ export async function listSessions(params: {
 }) {
   const where = sessionWhere(params);
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.trainingSession.findMany({
       where,
       skip: params.skip,
@@ -234,7 +235,8 @@ export async function listPlans(params: {
         }),
   };
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.trainingPlan.findMany({
       where,
       skip: params.skip,

@@ -146,7 +146,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | Enrollment | SchoolEnrollment, TeamMembership | 6 |
 | Journey | PlayerJourneyEvent | 7 |
 | Training | TrainingSession, TrainingPlan, TrainingExercise (✅ ۸)، Attendance (✅ ۹) | 8–9 |
-| Talent | Tryout, TryoutApplication, Screening (✅ ۱۰)، EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore (۱۱–۱۲) | 10–12 |
+| Talent | Tryout, TryoutApplication, Screening (✅ ۱۰)، EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore (✅ ۱۱) | 10–12 |
 | Competition | Match, MatchLineup, PlayerMatchStat | 13 |
 | Performance | PerformanceRecord | 14 |
 | Communication | Notification, Announcement | 15 |

@@ -308,6 +308,7 @@ export async function createParentWithChild(mobile: string): Promise<{
  * through it eventually broke — intermittently, which is the worst kind.
  */
 export async function createCoachWithSquad(mobile: string): Promise<{
+  staffId: string;
   teamId: string;
   otherTeamId: string;
   squadPlayerId: string;
@@ -378,7 +379,7 @@ export async function createCoachWithSquad(mobile: string): Promise<{
       );
     }
 
-    return { teamId, otherTeamId, squadPlayerId, otherTeamPlayerId };
+    return { staffId, teamId, otherTeamId, squadPlayerId, otherTeamPlayerId };
   });
 }
 
@@ -653,5 +654,45 @@ export async function findApplicationByTrackingCode(
       [trackingCode],
     );
     return rows[0] ?? null;
+  });
+}
+
+/**
+ * Hands a coach an evaluation to fill in.
+ *
+ * The assignment is the only route a coach has to a player they cannot
+ * otherwise see, so a test that wants to exercise it has to make one
+ * (docs/BUSINESS_RULES.md §16).
+ */
+export async function assignEvaluation(params: {
+  playerId: string;
+  evaluatorStaffId: string;
+  applicationId?: string;
+}): Promise<{ id: string; criteria: Array<{ id: string; maxScore: number }> }> {
+  return withClient(async (client) => {
+    const { rows: templateRows } = await client.query<{ id: string }>(
+      `SELECT id FROM "EvaluationTemplate" WHERE "isActive" = true ORDER BY "createdAt" ASC LIMIT 1`,
+    );
+    const templateId = templateRows[0]?.id;
+    if (!templateId) throw new Error("no evaluation template is seeded");
+
+    const { rows } = await client.query<{ id: string }>(
+      `INSERT INTO "Evaluation"
+         ("id","playerId","templateId","evaluatorId","applicationId","status","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, 'DRAFT', now(), now())
+       RETURNING id`,
+      [params.playerId, templateId, params.evaluatorStaffId, params.applicationId ?? null],
+    );
+
+    const { rows: criteria } = await client.query<{
+      id: string;
+      maxScore: number;
+    }>(
+      `SELECT id, "maxScore" FROM "EvaluationCriterion"
+        WHERE "templateId" = $1 ORDER BY "displayOrder" ASC`,
+      [templateId],
+    );
+
+    return { id: rows[0]!.id, criteria };
   });
 }
