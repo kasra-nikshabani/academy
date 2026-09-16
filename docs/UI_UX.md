@@ -174,6 +174,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `TryoutRegistration` | `components/tryouts/tryout-registration.tsx` |
 | `ApplicationStatusLookup` | `components/tryouts/application-status-lookup.tsx` |
 | `ApplicationActions` | `components/tryouts/application-actions.tsx` |
+| `EvaluationSheet` | `components/evaluations/evaluation-sheet.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -185,7 +186,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 
 ### Domain Component ها
 
-PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · EvaluationCard · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · ~~EvaluationCard~~ (✅ ۱۱ — به‌صورت `EvaluationSheet`) · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
 
 ### چرا دفتر حضور جدول نشد
 

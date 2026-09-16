@@ -40,7 +40,8 @@ export async function listUsers(params: {
 }): Promise<{ items: UserListItem[]; total: number }> {
   const where = params.search ? { mobile: { contains: params.search } } : {};
 
-  const [rows, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [rows, total] = await Promise.all([
     prisma.user.findMany({
       where,
       skip: params.skip,

@@ -21,6 +21,21 @@ export default async function globalTeardown(): Promise<void> {
   await client.connect();
 
   try {
+    // 0. Evaluations first.
+    //
+    // `Evaluation.evaluator` holds its `Staff` with `Restrict`, so a fixture
+    // coach cannot be deleted while one exists — and the person sweep below
+    // would fail rather than clean up. Evaluations about a fixture *player*
+    // cascade on their own; these are the ones a fixture coach was given.
+    await client.query(`
+      DELETE FROM "Evaluation"
+       WHERE "evaluatorId" IN (
+         SELECT s.id FROM "Staff" s
+           JOIN "Person" p ON p.id = s."personId"
+          WHERE p."lastName" = 'آزمایشی' OR p."nationalCode" LIKE '999%'
+       )
+    `);
+
     // 1. People created by fixtures, or through the API by a test.
     //
     // A player created through the API gets a real `SEP-` code, so the code

@@ -404,12 +404,39 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 پیگیری وضعیت `POST` است نه `GET`، تا کد پیگیری و شماره موبایل وارد نشانی، History مرورگر، لاگ سرور و هدر Referrer نشوند.
 
+### ارزیابی
+
+| مسیر | متد | مجوز |
+|---|---|---|
+| `/api/v1/evaluations` | `GET` | `evaluation:read` |
+| `/api/v1/evaluations` | `POST` | `evaluation:write` |
+| `/api/v1/evaluations/:id` | `GET` / `PUT` | `evaluation:read` / `evaluation:write` |
+| `/api/v1/evaluations/templates` | `GET` / `POST` | `evaluation:read` / `evaluation:write` |
+| `/api/v1/players/:id/evaluations` | `GET` | `evaluation:read` |
+
+`GET /evaluations` آنچه را برمی‌گرداند که Caller حق دیدنش را دارد: ارزیابی‌های سپرده‌شده به خودش، به‌علاوه ارزیابی بازیکنان تیم‌هایش. ارزیابی خارج از این محدوده `NOT_FOUND` می‌گیرد، نه `FORBIDDEN`.
+
+`POST /evaluations` ارزیابی را به مربی می‌سپارد. برای Caller دارای Scope فقط برای بازیکن تیم خودش و به نام خودش مجاز است؛ اتصال به درخواست استعدادیابی فقط برای Caller بدون Scope.
+
+**`PUT /evaluations/:id` هم ذخیره می‌کند و هم ثبت نهایی:**
+
+```json
+{
+  "scores": [{ "criterionId": "…", "score": 8 }],
+  "recommendation": "ACCEPT",
+  "submit": true
+}
+```
+
+`submit: false` پیش‌نویس را با هر تعداد امتیاز ذخیره می‌کند. `submit: true` امتیاز همه معیارها را لازم دارد و برگه را می‌بندد؛ پس از آن هر نوشتن `CONFLICT` می‌گیرد.
+
+پاسخ، علاوه بر خود ارزیابی، `dimensions` را دارد — میانگین هر یک از چهار بُعد روی مقیاس ۰ تا ۱۰. بُعدی که امتیازی ندارد **نیست**، نه اینکه صفر باشد.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `users/:id/roles` (انتساب نقش) | Phase 6 |
-| `evaluations` | Phase 11 |
 | `matches`، `lineup`، `stats` | Phase 13 |
 | `performance` | Phase 14 |
 | `notifications` | Phase 15 |

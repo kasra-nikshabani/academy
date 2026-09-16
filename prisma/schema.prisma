@@ -211,10 +211,11 @@ model Sport {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  ageGroups AgeGroup[]
-  schools   School[]
-  teams     Team[]
-  tryouts   Tryout[]
+  ageGroups           AgeGroup[]
+  schools             School[]
+  teams               Team[]
+  tryouts             Tryout[]
+  evaluationTemplates EvaluationTemplate[]
 
   @@index([isActive, displayOrder])
 }
@@ -251,8 +252,9 @@ model AgeGroup {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  teams   Team[]
-  tryouts Tryout[]
+  teams               Team[]
+  tryouts             Tryout[]
+  evaluationTemplates EvaluationTemplate[]
 
   @@unique([sportId, code])
   @@index([sportId, displayOrder])
@@ -460,6 +462,7 @@ model Player {
   journeyEvents      PlayerJourneyEvent[]
   attendance         Attendance[]
   tryoutApplications TryoutApplication[]
+  evaluations        Evaluation[]
 
   @@index([status])
 }
@@ -517,7 +520,8 @@ model Staff {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  teams StaffTeam[]
+  teams       StaffTeam[]
+  evaluations Evaluation[]
 
   @@index([status])
 }
@@ -823,7 +827,8 @@ model TrainingSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  attendance Attendance[]
+  attendance  Attendance[]
+  evaluations Evaluation[]
 
   /// There is deliberately **no** unique key on `teamId + startsAt`.
   ///
@@ -1013,7 +1018,8 @@ model TryoutApplication {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  screening Screening?
+  screening   Screening?
+  evaluations Evaluation[]
 
   /// One application per player per trial (CLAUDE.md §9).
   @@unique([tryoutId, playerId])
@@ -1044,4 +1050,175 @@ model Screening {
   updatedAt DateTime @updatedAt
 
   @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Evaluation — Phase 11
+//
+//   EvaluationTemplate ──< EvaluationCriterion
+//           │                      │
+//           └──< Evaluation ──< EvaluationScore
+//
+// The engine is configurable because a goalkeeper is not judged on the same
+// things as a winger, and a volleyball academy on neither (CLAUDE.md §14).
+// What stays fixed is the four dimensions the club reports on.
+//
+// **An evaluation is a record, not a working document.** Once submitted, its
+// scores and its computed overall are frozen — a template whose weights change
+// next season must not silently restate what a coach concluded last season.
+// This is the opposite of `TrainingPlan`, and deliberately so
+// (docs/BUSINESS_RULES.md §16).
+// ---------------------------------------------------------------------------
+
+/// The four things the club reports on, whatever the criteria underneath.
+enum EvaluationDimension {
+  TECHNICAL
+  PHYSICAL
+  MENTAL
+  OVERALL
+}
+
+enum EvaluationStatus {
+  /// Assigned to an evaluator, or being filled in.
+  DRAFT
+  /// Finished. Scores and the overall are frozen from here.
+  SUBMITTED
+}
+
+/// What the evaluator advises. Deliberately **not** a decision: a coach
+/// recommends, the academy manager decides (docs/PERMISSIONS.md §5).
+enum EvaluationRecommendation {
+  ACCEPT
+  WAITLIST
+  REJECT
+  MORE_OBSERVATION
+}
+
+model EvaluationTemplate {
+  id String @id @default(cuid())
+
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id], onDelete: Restrict)
+
+  /// Narrows the template to one band when the club wants different criteria
+  /// for under-12s than for under-21s. Null means it serves the whole sport.
+  ageGroupId String?
+  ageGroup   AgeGroup? @relation(fields: [ageGroupId], references: [id], onDelete: SetNull)
+
+  title       String
+  description String?
+
+  isActive Boolean @default(true)
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  criteria    EvaluationCriterion[]
+  evaluations Evaluation[]
+
+  @@index([sportId, isActive])
+}
+
+model EvaluationCriterion {
+  id String @id @default(cuid())
+
+  templateId String
+  template   EvaluationTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  dimension EvaluationDimension
+
+  title       String
+  description String?
+
+  /// Highest score this criterion accepts. Ten by default, because a coach
+  /// marking out of ten needs no explanation.
+  maxScore Int @default(10)
+
+  /// How much this criterion counts toward the overall. Equal by default; a
+  /// club that thinks first touch matters twice as much can say so.
+  weight Int @default(1)
+
+  displayOrder Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scores EvaluationScore[]
+
+  @@index([templateId, displayOrder])
+}
+
+model Evaluation {
+  id String @id @default(cuid())
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  templateId String
+  template   EvaluationTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  /// The staff member who is to fill this in. **This is the coach's route to
+  /// a trial player**: they are given the evaluation, not the application, so
+  /// they never need a `tryout:*` permission to do their job.
+  evaluatorId String
+  evaluator   Staff  @relation(fields: [evaluatorId], references: [id], onDelete: Restrict)
+
+  /// Who asked for it. Null when a coach evaluates their own squad unprompted.
+  assignedById String?
+
+  /// What the evaluation was for. Both optional, so an evaluation can stand on
+  /// its own — a coach assessing a squad player in January answers to nothing
+  /// but the calendar.
+  applicationId String?
+  application   TryoutApplication? @relation(fields: [applicationId], references: [id], onDelete: SetNull)
+
+  trainingSessionId String?
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: SetNull)
+
+  status EvaluationStatus @default(DRAFT)
+
+  /// The weighted average, computed once at submission and then left alone.
+  /// Stored rather than derived so that editing a template next season cannot
+  /// rewrite what a coach concluded this one.
+  overallScore Float?
+
+  recommendation EvaluationRecommendation?
+
+  strengths  String?
+  weaknesses String?
+  notes      String?
+
+  submittedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  scores EvaluationScore[]
+
+  @@index([playerId, submittedAt])
+  @@index([evaluatorId, status])
+  @@index([applicationId])
+}
+
+model EvaluationScore {
+  id String @id @default(cuid())
+
+  evaluationId String
+  evaluation   Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+
+  criterionId String
+  criterion   EvaluationCriterion @relation(fields: [criterionId], references: [id], onDelete: Restrict)
+
+  score Int
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One score per criterion per evaluation (CLAUDE.md §9).
+  @@unique([evaluationId, criterionId])
+  @@index([criterionId])
 }

@@ -10,6 +10,13 @@ import {
 } from "@/lib/services/enrollment.service";
 import { getPlayerJourney } from "@/lib/services/journey.service";
 import { getPlayerRegister } from "@/lib/services/attendance.service";
+import { listPlayerEvaluations } from "@/lib/services/evaluation.service";
+import {
+  RECOMMENDATION_CLASS,
+  RECOMMENDATION_LABEL,
+  scoreTone,
+} from "@/components/evaluations/evaluation-meta";
+import { cn } from "@/lib/utils";
 import { PlayerJourney } from "@/components/players/player-journey";
 import { AttendanceSummary } from "@/components/training/attendance-summary";
 import { hasPermission } from "@/lib/permissions";
@@ -64,6 +71,12 @@ export default async function PlayerPage(props: {
         ? getPlayerRegister(caller, id)
         : null,
     ]);
+
+  // A reader without `evaluation:read`, or one who may not reach this player's
+  // evaluations, simply gets no section — not an error page.
+  const evaluations = hasPermission(caller, "evaluation:read")
+    ? await listPlayerEvaluations(caller, id).catch(() => [])
+    : [];
 
   return (
     <>
@@ -223,6 +236,57 @@ export default async function PlayerPage(props: {
               rate={attendance.rate}
               entries={attendance.entries}
             />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {evaluations.length > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">ارزیابی‌ها</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {evaluations.map((evaluation) => (
+                <li
+                  key={evaluation.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+                >
+                  <span>
+                    {evaluation.template.title}
+                    <span className="ms-2 text-xs text-muted-foreground">
+                      {evaluation.evaluator.person.firstName}{" "}
+                      {evaluation.evaluator.person.lastName}
+                      {evaluation.submittedAt
+                        ? ` · ${formatJalali(evaluation.submittedAt)}`
+                        : ""}
+                    </span>
+                  </span>
+
+                  <span className="flex items-center gap-2">
+                    {evaluation.recommendation ? (
+                      <Badge
+                        className={cn(
+                          RECOMMENDATION_CLASS[evaluation.recommendation],
+                        )}
+                      >
+                        {RECOMMENDATION_LABEL[evaluation.recommendation]}
+                      </Badge>
+                    ) : null}
+                    <span
+                      className={cn(
+                        "rounded-md px-2 py-0.5 text-xs font-medium tabular-nums",
+                        scoreTone(evaluation.overallScore),
+                      )}
+                    >
+                      {evaluation.overallScore === null
+                        ? "—"
+                        : `${toPersianDigits(evaluation.overallScore)} از ۱۰`}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ul>
           </CardContent>
         </Card>
       ) : null}

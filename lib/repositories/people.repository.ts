@@ -23,6 +23,22 @@ export async function findTeamIdsForUser(userId: string): Promise<string[]> {
   return rows.map((row) => row.teamId);
 }
 
+/**
+ * The staff record behind a login, if there is one.
+ *
+ * An evaluation is assigned to a `Staff`, not to a `User`, so this is how a
+ * signed-in coach finds out which assignments are theirs.
+ */
+export async function findStaffIdForUser(
+  userId: string,
+): Promise<string | null> {
+  const staff = await prisma.staff.findFirst({
+    where: { status: "ACTIVE", person: { userId } },
+    select: { id: true },
+  });
+  return staff?.id ?? null;
+}
+
 /** Players a guardian is joined to, plus the caller's own player record. */
 export async function findPlayerIdsForUser(userId: string): Promise<string[]> {
   const [children, own] = await prisma.$transaction([
@@ -108,7 +124,8 @@ export async function listPlayers(params: {
       : {}),
   };
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.player.findMany({
       where,
       skip: params.skip,
@@ -282,7 +299,8 @@ export async function listStaff(params: {
       ? {}
       : { teams: { some: { teamId: { in: [...params.allowedTeamIds] } } } };
 
-  const [items, total] = await prisma.$transaction([
+  // Paired, not transactional — see the note in ./transaction.ts.
+  const [items, total] = await Promise.all([
     prisma.staff.findMany({
       where,
       skip: params.skip,

@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import { apiHandler, ok } from "@/lib/api";
 import { getClientIp, readJsonBody } from "@/lib/api/request";
 import { requestTryoutOtp } from "@/lib/services/auth.service";
-import { getPublicTryout, registrationWindow } from "@/lib/services/tryout.service";
+import {
+  getPublicTryout,
+  registrationWindow,
+} from "@/lib/services/tryout.service";
 import { ConflictError } from "@/lib/errors";
 import { tryoutOtpRequestSchema } from "@/lib/validation/tryout";
 

@@ -3,10 +3,7 @@ import { apiHandler, created, okPaginated, parsePagination } from "@/lib/api";
 import { readJsonBody } from "@/lib/api/request";
 import { requireUser } from "@/lib/auth";
 import { createTryout, listTryouts } from "@/lib/services/tryout.service";
-import {
-  createTryoutSchema,
-  tryoutQuerySchema,
-} from "@/lib/validation/tryout";
+import { createTryoutSchema, tryoutQuerySchema } from "@/lib/validation/tryout";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
