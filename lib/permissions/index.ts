@@ -21,6 +21,7 @@ export {
 } from "./authorize";
 export {
   resolvePlayerScope,
+  resolveScheduleTeamIds,
   resolveScope,
   resolveTeamScope,
 } from "./resolve-scope";

@@ -116,6 +116,13 @@ export function isJalaliLeapYear(jy: number): boolean {
   return isLeapJalaaliYear(jy);
 }
 
+/**
+ * Iran is UTC+03:30 the year round — it no longer observes DST — so a day
+ * boundary is a fixed offset rather than something that has to be looked up.
+ */
+const TEHRAN_OFFSET_MS = 3.5 * 60 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
 /** 0 = Saturday … 6 = Friday, matching the Iranian week. */
 export function iranianWeekday(date: Date): number {
   const utcWeekday = new Date(
@@ -166,14 +173,50 @@ export function formatJalaliNumeric(date: Date): string {
 
 /** `۲۴ شهریور ۱۴۰۵، ۱۸:۳۰` */
 export function formatJalaliDateTime(date: Date): string {
-  const day = formatJalali(date);
-  const time = new Intl.DateTimeFormat("fa-IR", {
+  return `${formatJalali(date)}، ${formatTime(date)}`;
+}
+
+/** `۱۸:۳۰` — the wall clock in Tehran. */
+export function formatTime(date: Date): string {
+  return new Intl.DateTimeFormat("fa-IR", {
     timeZone: ACADEMY_TIME_ZONE,
     hour: "2-digit",
     minute: "2-digit",
-    hour12: false,
+    hourCycle: "h23",
   }).format(date);
-  return `${day}، ${time}`;
+}
+
+/** `۱۶:۰۰ تا ۱۷:۳۰` */
+export function formatTimeRange(start: Date, end: Date): string {
+  return `${formatTime(start)} تا ${formatTime(end)}`;
+}
+
+/** Midnight in Tehran on the calendar day the instant falls on. */
+export function startOfDay(date: Date): Date {
+  const { jy, jm, jd } = toJalali(date);
+  const { gy, gm, gd } = toGregorian(jy, jm, jd);
+  return new Date(Date.UTC(gy, gm - 1, gd, 0, 0, 0, 0) - TEHRAN_OFFSET_MS);
+}
+
+export function addDays(date: Date, days: number): Date {
+  return new Date(date.getTime() + days * DAY_MS);
+}
+
+/**
+ * Midnight on the **Saturday** that opens the week containing the instant.
+ *
+ * The training calendar is built from this. Getting it from the Gregorian
+ * weekday would open the week on Sunday and put Friday — the one day nothing
+ * is scheduled — in the middle of the grid.
+ */
+export function startOfWeek(date: Date): Date {
+  return addDays(startOfDay(date), -iranianWeekday(date));
+}
+
+/** The seven days of the week containing the instant, Saturday first. */
+export function weekDays(date: Date): Date[] {
+  const saturday = startOfWeek(date);
+  return Array.from({ length: 7 }, (_, index) => addDays(saturday, index));
 }
 
 export interface CalendarCell {

@@ -33,6 +33,32 @@ export async function findPlayerIdsInTeams(
   return [...new Set(rows.map((row) => row.playerId))];
 }
 
+/**
+ * The teams a given set of players belong to in a season.
+ *
+ * The mirror of `findPlayerIdsInTeams`, and what lets a player or a parent see
+ * a training calendar at all: they hold no `StaffTeam` row, so their team
+ * reach has to come from the squads they are actually in.
+ */
+export async function findTeamIdsForPlayers(
+  playerIds: readonly string[],
+  seasonId: string,
+): Promise<string[]> {
+  if (playerIds.length === 0) return [];
+
+  const rows = await prisma.teamMembership.findMany({
+    where: {
+      playerId: { in: [...playerIds] },
+      seasonId,
+      status: "ACTIVE",
+      leftAt: null,
+    },
+    select: { teamId: true },
+  });
+
+  return [...new Set(rows.map((row) => row.teamId))];
+}
+
 // --- school enrolment -------------------------------------------------------
 
 export function findSchoolEnrollment(

@@ -86,3 +86,26 @@ describe("redact", () => {
     expect(() => JSON.stringify(redact(cyclic))).not.toThrow();
   });
 });
+
+describe("values that are objects but not records", () => {
+  /**
+   * A `Date` walked as a plain object yields `{}` — every timestamp in every
+   * log line lost, with nothing to show it had happened.
+   */
+  it("keeps a Date as an ISO string", () => {
+    const output = redact({ startsAt: new Date("2026-09-16T12:30:00.000Z") });
+    expect(output).toEqual({ startsAt: "2026-09-16T12:30:00.000Z" });
+  });
+
+  it("survives an invalid Date", () => {
+    expect(redact({ at: new Date("nonsense") })).toEqual({
+      at: "[INVALID_DATE]",
+    });
+  });
+
+  it("keeps a Date nested inside an object", () => {
+    expect(redact({ session: { startsAt: new Date(0) } })).toEqual({
+      session: { startsAt: "1970-01-01T00:00:00.000Z" },
+    });
+  });
+});

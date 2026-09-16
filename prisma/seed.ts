@@ -4,6 +4,7 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 import { PERMISSIONS, splitPermission } from "../lib/permissions/catalogue";
 import type { Permission } from "../lib/permissions/catalogue";
 import { ROLE_DEFINITIONS } from "../lib/permissions/roles";
+import { addDays, startOfWeek } from "../lib/utils/date";
 import type { RoleKey } from "../lib/generated/prisma/enums";
 
 /**
@@ -647,6 +648,203 @@ async function main(): Promise<void> {
 
     const journeyCount = await prisma.playerJourneyEvent.count();
     console.info(`  \u2713 ${journeyCount} journey events`);
+
+    // --- training ---------------------------------------------------------
+    //
+    // Two plans and a week of sessions, so the calendar has something in it
+    // the first time it is opened.
+    //
+    // Sessions are anchored to the **current** week rather than to fixed dates
+    // in the season: a seed whose calendar is six months in the past shows an
+    // empty page, which looks like a broken feature rather than empty data.
+    const plans = [
+      {
+        key: "u14-technical",
+        teamId: u14.id,
+        title: "تمرین فنی — کنترل و پاس",
+        description:
+          "جلسه پایه هفتگی رده U14 با تمرکز بر کنترل توپ و پاس کوتاه.",
+        type: "TECHNICAL" as const,
+        exercises: [
+          {
+            title: "گرم کردن و حرکات کششی",
+            durationMinutes: 15,
+            focus: "آمادگی",
+            description: "دو نرم دور زمین و کشش پویا.",
+          },
+          {
+            title: "پاس‌کاری در مربع ۱۰×۱۰",
+            durationMinutes: 20,
+            focus: "پاس کوتاه",
+            description: "چهار نفره، دو لمس، سپس تک‌ضرب.",
+          },
+          {
+            title: "کنترل و چرخش",
+            durationMinutes: 20,
+            focus: "کنترل توپ",
+          },
+          {
+            title: "بازی کوچک ۴ به ۴",
+            durationMinutes: 25,
+            focus: "تصمیم‌گیری",
+          },
+          {
+            title: "سرد کردن",
+            durationMinutes: 10,
+            focus: "ریکاوری",
+          },
+        ],
+      },
+      {
+        key: "academy-fitness",
+        teamId: null,
+        title: "آمادگی جسمانی پیش‌فصل",
+        description:
+          "برنامه عمومی آکادمی؛ همه رده‌ها می‌توانند آن را اجرا کنند.",
+        type: "PHYSICAL" as const,
+        exercises: [
+          { title: "دو استقامتی", durationMinutes: 20, focus: "هوازی" },
+          { title: "تمرین سرعت و شتاب", durationMinutes: 20, focus: "سرعت" },
+          { title: "قدرت با وزن بدن", durationMinutes: 25, focus: "قدرت" },
+          { title: "کشش و ریکاوری", durationMinutes: 15, focus: "ریکاوری" },
+        ],
+      },
+    ];
+
+    const planIds = new Map<string, string>();
+
+    for (const plan of plans) {
+      // Plans have no natural key, so the title within its team stands in for
+      // one here — enough to keep re-seeding from stacking up duplicates.
+      const existing = await prisma.trainingPlan.findFirst({
+        where: { title: plan.title, teamId: plan.teamId },
+      });
+
+      if (existing) {
+        planIds.set(plan.key, existing.id);
+        continue;
+      }
+
+      const created = await prisma.trainingPlan.create({
+        data: {
+          ...(plan.teamId ? { teamId: plan.teamId } : {}),
+          title: plan.title,
+          description: plan.description,
+          type: plan.type,
+          exercises: {
+            create: plan.exercises.map((exercise, index) => ({
+              ...exercise,
+              displayOrder: index,
+            })),
+          },
+        },
+      });
+      planIds.set(plan.key, created.id);
+    }
+
+    console.info(`  \u2713 ${plans.length} training plans`);
+
+    const now = new Date();
+    const weekStart = startOfWeek(now);
+    const HOUR_MS = 60 * 60 * 1000;
+
+    const sessions = [
+      {
+        day: 0,
+        hour: 16,
+        minutes: 90,
+        teamId: u14.id,
+        plan: "u14-technical",
+        type: "TECHNICAL" as const,
+      },
+      {
+        day: 0,
+        hour: 17.5,
+        minutes: 90,
+        teamId: u16.id,
+        plan: "academy-fitness",
+        type: "PHYSICAL" as const,
+      },
+      {
+        day: 2,
+        hour: 16,
+        minutes: 90,
+        teamId: u14.id,
+        plan: "academy-fitness",
+        type: "PHYSICAL" as const,
+      },
+      {
+        day: 2,
+        hour: 17.5,
+        minutes: 90,
+        teamId: u16.id,
+        plan: null,
+        type: "TACTICAL" as const,
+      },
+      {
+        day: 4,
+        hour: 16,
+        minutes: 105,
+        teamId: u14.id,
+        plan: "u14-technical",
+        type: "MIXED" as const,
+      },
+      {
+        day: 5,
+        hour: 17,
+        minutes: 90,
+        teamId: u16.id,
+        plan: null,
+        type: "RECOVERY" as const,
+        cancelled: true,
+      },
+    ];
+
+    let sessionCount = 0;
+
+    for (const item of sessions) {
+      const startsAt = new Date(
+        addDays(weekStart, item.day).getTime() + item.hour * HOUR_MS,
+      );
+      const endsAt = new Date(startsAt.getTime() + item.minutes * 60 * 1000);
+
+      const seasonForSession = await prisma.season.findFirst({
+        where: { startDate: { lte: startsAt }, endDate: { gte: startsAt } },
+        orderBy: { startYear: "desc" },
+      });
+      if (!seasonForSession) continue;
+
+      const planId = item.plan ? planIds.get(item.plan) : undefined;
+
+      const already = await prisma.trainingSession.findFirst({
+        where: { teamId: item.teamId, startsAt },
+      });
+      if (already) {
+        sessionCount += 1;
+        continue;
+      }
+
+      await prisma.trainingSession.create({
+        data: {
+          teamId: item.teamId,
+          seasonId: seasonForSession.id,
+          ...(planId ? { planId } : {}),
+          type: item.type,
+          status: item.cancelled
+            ? "CANCELLED"
+            : startsAt < now
+              ? "COMPLETED"
+              : "SCHEDULED",
+          startsAt,
+          endsAt,
+          location: "زمین شماره ۲ — مجموعه ورزشی سپاهان",
+          ...(item.cancelled ? { cancelReason: "بارندگی شدید" } : {}),
+        },
+      });
+      sessionCount += 1;
+    }
+
+    console.info(`  \u2713 ${sessionCount} training sessions (this week)`);
 
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",

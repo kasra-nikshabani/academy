@@ -44,6 +44,19 @@ export default async function globalTeardown(): Promise<void> {
       DELETE FROM "PlayerJourneyEvent"
        WHERE "teamId" IN (SELECT id FROM "Team" WHERE slug LIKE 'e2e-%')
     `);
+
+    // Training sessions hold their team with `Restrict`, so they have to go
+    // before the team does. Plans would cascade with the team, but are
+    // removed explicitly so a session's `planId` is never the reason a delete
+    // is refused.
+    await client.query(`
+      DELETE FROM "TrainingSession"
+       WHERE "teamId" IN (SELECT id FROM "Team" WHERE slug LIKE 'e2e-%')
+    `);
+    await client.query(`
+      DELETE FROM "TrainingPlan"
+       WHERE "teamId" IN (SELECT id FROM "Team" WHERE slug LIKE 'e2e-%')
+    `);
     await client.query(`
       DELETE FROM "TeamMembership"
        WHERE "teamId" IN (SELECT id FROM "Team" WHERE slug LIKE 'e2e-%')

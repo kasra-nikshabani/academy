@@ -167,6 +167,8 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `AppShell` | `components/layout/app-shell.tsx` |
 | `SidebarNav` | `components/navigation/sidebar-nav.tsx` |
 | `PlayerJourney` | `components/players/player-journey.tsx` |
+| `TrainingCard` | `components/training/training-card.tsx` |
+| `TrainingWeek` | `components/training/training-week.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -178,7 +180,15 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 
 ### Domain Component ها
 
-PlayerCard · PlayerJourney · TeamCard · TrainingCard · TryoutCard · EvaluationCard · AttendanceTable · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · EvaluationCard · AttendanceTable · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+
+### تقویم هفتگی تمرین — چرا Container Query و نه Breakpoint
+
+`TrainingWeek` روی دسکتاپ هفت ستون و روی موبایل فهرستی از روزهاست. **همان کارت** در یکی حدود ۹۰ پیکسل عرض دارد و در دیگری تمام‌عرض است — در حالی‌که عرض Viewport در حالت اول بزرگ‌تر است. Breakpoint این دو را برعکس جواب می‌دهد.
+
+نسخه اول کارت، بازه ساعت و برچسب وضعیت و مکان و نام برنامه را نشان می‌داد؛ در ستون هفته، بازه روی سه خط می‌شکست و Badge به «برگز» بریده می‌شد. حالا کارت پایه فقط ساعت شروع، نام تیم، نوع و وضعیت را دارد و بقیه با `@[11rem]:` وقتی ظاهر می‌شود که واقعاً جا باشد. متن کامل همیشه در `aria-label` و `title` هست.
+
+**روزهای خالی روی موبایل حذف می‌شوند.** پنج کارت خالی تا رسیدن به دوشنبه، بدتر از ندیدن یکشنبه است. روی دسکتاپ ستونشان می‌ماند تا شکل هفته حفظ شود.
 
 ### چرا تقویم اختصاصی نوشته شد
 

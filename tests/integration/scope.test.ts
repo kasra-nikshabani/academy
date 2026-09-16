@@ -158,11 +158,22 @@ describe("a guardian may only reach their own children", () => {
   });
 
   it("cannot tell a missing id from someone else's", async () => {
-    const missing = getPlayer(parent, "does-not-exist");
-    const other = getPlayer(parent, otherChildId);
+    // Awaited one at a time. Starting both first left the second rejection
+    // without a handler for a tick, which Vitest reports as an unhandled
+    // rejection — intermittently, depending on which query finished first.
+    const missing = await getPlayer(parent, "does-not-exist").catch(
+      (error: unknown) => error,
+    );
+    const other = await getPlayer(parent, otherChildId).catch(
+      (error: unknown) => error,
+    );
 
-    await expect(missing).rejects.toThrow();
-    await expect(other).rejects.toThrow();
+    // The claim this test is named for: the two are indistinguishable. Both
+    // must fail, and fail *the same way* — otherwise a parent could map out
+    // which ids exist by reading the error.
+    expect(missing).toMatchObject({ code: "OUT_OF_SCOPE" });
+    expect(other).toMatchObject({ code: "OUT_OF_SCOPE" });
+    expect((missing as Error).message).toBe((other as Error).message);
   });
 });
 

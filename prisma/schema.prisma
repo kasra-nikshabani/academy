@@ -44,9 +44,9 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  otpCodes  OtpCode[]
-  userRoles UserRole[]
-  person    Person?
+  otpCodes     OtpCode[]
+  userRoles    UserRole[]
+  person       Person?
   /// Role assignments this user granted to others — kept for audit.
   grantedRoles UserRole[] @relation("RoleAssignedBy")
 
@@ -87,7 +87,6 @@ model OtpCode {
   @@index([userId])
 }
 
-
 // ---------------------------------------------------------------------------
 // Authorization — Phase 3
 //
@@ -108,8 +107,8 @@ enum RoleKey {
 }
 
 model Role {
-  id  String  @id @default(cuid())
-  key RoleKey @unique
+  id          String  @id @default(cuid())
+  key         RoleKey @unique
   /// Persian label shown in the interface.
   name        String
   description String?
@@ -126,7 +125,7 @@ model Role {
 }
 
 model Permission {
-  id String @id @default(cuid())
+  id  String @id @default(cuid())
   /// `resource:action`, e.g. `player:read`. Mirrors lib/permissions/catalogue.ts,
   /// which is the source of truth; the seed syncs this table to it.
   key String @unique
@@ -151,10 +150,10 @@ model UserRole {
   roleId String
   role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
-  assignedAt DateTime @default(now())
+  assignedAt   DateTime @default(now())
   /// Who granted this role. Null for seeded assignments.
   assignedById String?
-  assignedBy   User?   @relation("RoleAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+  assignedBy   User?    @relation("RoleAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
 
   /// One user may hold several roles — a coach who is also a player's parent
   /// is ordinary in an academy — but never the same role twice.
@@ -177,7 +176,6 @@ model RolePermission {
   @@index([permissionId])
 }
 
-
 // ---------------------------------------------------------------------------
 // Academy structure — Phase 4
 //
@@ -199,16 +197,16 @@ enum SeasonStatus {
 }
 
 model Sport {
-  id String @id @default(cuid())
+  id     String  @id @default(cuid())
   /// URL segment for the public pages, e.g. /sports/football
-  slug String @unique
+  slug   String  @unique
   name   String
   nameEn String?
 
-  description String?
-  isActive    Boolean @default(true)
+  description  String?
+  isActive     Boolean @default(true)
   /// Manual ordering in lists; sports are few and rank by importance, not name.
-  displayOrder Int @default(0)
+  displayOrder Int     @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -279,6 +277,7 @@ model Season {
 
   schoolEnrollments SchoolEnrollment[]
   teamMemberships   TeamMembership[]
+  trainingSessions  TrainingSession[]
 
   @@index([status])
   @@index([startYear])
@@ -329,10 +328,12 @@ model Team {
   staff       StaffTeam[]
   memberships TeamMembership[]
 
+  trainingPlans    TrainingPlan[]
+  trainingSessions TrainingSession[]
+
   @@index([sportId, isActive])
   @@index([ageGroupId])
 }
-
 
 // ---------------------------------------------------------------------------
 // People — Phase 5
@@ -436,11 +437,11 @@ model Player {
   playerCode String       @unique
   status     PlayerStatus @default(ACTIVE)
 
-  position      String?
-  jerseyNumber  Int?
-  dominantFoot  String?
-  heightCm      Int?
-  weightKg      Int?
+  position     String?
+  jerseyNumber Int?
+  dominantFoot String?
+  heightCm     Int?
+  weightKg     Int?
 
   /// Free-text medical note. Sensitive: never logged, never in list responses.
   medicalNotes String?
@@ -485,9 +486,9 @@ model PlayerGuardian {
   guardianId String
   guardian   Guardian @relation(fields: [guardianId], references: [id], onDelete: Cascade)
 
-  relation GuardianRelation @default(OTHER)
+  relation  GuardianRelation @default(OTHER)
   /// The adult contacted first. At most one per player, enforced in the service.
-  isPrimary Boolean @default(false)
+  isPrimary Boolean          @default(false)
 
   createdAt DateTime @default(now())
 
@@ -531,7 +532,7 @@ model StaffTeam {
 
   role StaffTeamRole @default(OTHER)
 
-  assignedAt DateTime  @default(now())
+  assignedAt   DateTime  @default(now())
   /// Set instead of deleting, so past responsibility stays on the record.
   unassignedAt DateTime?
 
@@ -540,7 +541,6 @@ model StaffTeam {
   @@unique([staffId, teamId])
   @@index([teamId])
 }
-
 
 // ---------------------------------------------------------------------------
 // Enrollment — Phase 6
@@ -635,7 +635,6 @@ model TeamMembership {
   @@index([playerId, seasonId])
 }
 
-
 // ---------------------------------------------------------------------------
 // Journey — Phase 7
 //
@@ -693,4 +692,143 @@ model PlayerJourneyEvent {
 
   @@index([playerId, occurredAt])
   @@index([type])
+}
+
+// ---------------------------------------------------------------------------
+// Training — Phase 8
+//
+//   TrainingPlan ──< TrainingExercise
+//        │
+//        └──< TrainingSession >── Team, Season
+//
+// **A session belongs to exactly one team.** A joint session between two age
+// groups is recorded as two sessions at the same hour, not one session with
+// two teams. Attendance, the coach's scope and every squad report all resolve
+// through "which team is this?", and a session with two answers makes each of
+// them ambiguous for the sake of one row (docs/BUSINESS_RULES.md §7).
+//
+// A plan is **planning material, not a record of what happened.** It is
+// reusable across sessions and stays editable; what a session actually was is
+// carried by its own status, notes and — from Phase 9 — its attendance.
+// ---------------------------------------------------------------------------
+
+enum TrainingStatus {
+  DRAFT
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+enum TrainingType {
+  TECHNICAL
+  PHYSICAL
+  TACTICAL
+  RECOVERY
+  MIXED
+  OTHER
+}
+
+/// A reusable training programme: an ordered set of exercises.
+model TrainingPlan {
+  id String @id @default(cuid())
+
+  /// The team this plan was written for. Null means it is available to every
+  /// team — a fitness block the whole academy runs, for instance.
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  type        TrainingType @default(MIXED)
+
+  isActive Boolean @default(true)
+
+  /// Who wrote it. A loose id rather than a relation, matching the journey:
+  /// the plan must outlive changes to the account that created it.
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  exercises TrainingExercise[]
+  sessions  TrainingSession[]
+
+  @@index([teamId, isActive])
+}
+
+/// One exercise inside a plan.
+model TrainingExercise {
+  id String @id @default(cuid())
+
+  planId String
+  plan   TrainingPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  /// Position within the plan. Named like the rest of the schema rather than
+  /// `order`, which is a reserved word in SQL and reads badly in raw queries.
+  displayOrder Int @default(0)
+
+  title       String
+  description String?
+
+  /// Minutes on the pitch for this exercise; the plan's total is their sum.
+  durationMinutes Int?
+  /// What it trains, in the coach's own words, e.g. «کنترل توپ».
+  focus           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId, displayOrder])
+}
+
+/// A training session in the calendar.
+model TrainingSession {
+  id String @id @default(cuid())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  /// The season the session falls in, resolved from its date rather than from
+  /// whichever season happened to be active when it was entered — a
+  /// pre-season session typed in June belongs to the season it is played in.
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  /// The plan the session follows, if any. `SetNull` because deleting a plan
+  /// must not take the session with it.
+  planId String?
+  plan   TrainingPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+
+  type   TrainingType   @default(MIXED)
+  status TrainingStatus @default(SCHEDULED)
+
+  /// Stored UTC, shown Jalali in Tehran time. `endsAt` is derived from the
+  /// duration the caller gives and kept on the row so an overlap can be
+  /// answered by the database instead of in application code.
+  startsAt DateTime
+  endsAt   DateTime
+
+  location     String?
+  notes        String?
+  /// Why a cancelled session was cancelled. Cancelling never deletes the row.
+  cancelReason String?
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// There is deliberately **no** unique key on `teamId + startsAt`.
+  ///
+  /// It looks like the obvious backstop for a double booking, and it was here
+  /// until a test caught what it really does: a cancelled session frees its
+  /// slot, so re-entering a session at the same hour is legitimate and the
+  /// constraint refused it. A rule with an exception is not a unique key. The
+  /// clash check lives in the service, under a per-team advisory lock, which
+  /// covers the race the constraint was there for
+  /// (lib/repositories/training.repository.ts).
+  @@index([teamId, startsAt])
+  @@index([startsAt])
+  @@index([seasonId])
+  @@index([status, startsAt])
 }

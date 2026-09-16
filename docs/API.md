@@ -306,12 +306,49 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 > **هیچ مسیری برای ایجاد، ویرایش یا حذف رویداد وجود ندارد.** رویدادها را سرویس‌هایی می‌نویسند که واقعه را ایجاد می‌کنند، در همان Transaction (docs/BUSINESS_RULES.md §12).
 
+### تمرین
+
+| مسیر | متد | مجوز |
+|---|---|---|
+| `/api/v1/training/sessions` | `GET` | `training:read` + Scope تقویم |
+| `/api/v1/training/sessions` | `POST` | `training:write` + Scope تیم |
+| `/api/v1/training/sessions/:id` | `GET` | `training:read` + Scope تقویم |
+| `/api/v1/training/sessions/:id` | `PATCH` | `training:write` + Scope تیم |
+| `/api/v1/training/sessions/:id` | `DELETE` | `training:write` + Scope تیم |
+| `/api/v1/training/plans` | `GET` / `POST` | `training:read` / `training:write` |
+| `/api/v1/training/plans/:id` | `GET` / `PATCH` | `training:read` / `training:write` |
+| `/api/v1/training/plans/:id/exercises` | `POST` | `training:write` |
+| `/api/v1/training/exercises/:id` | `PATCH` / `DELETE` | `training:write` |
+
+فیلترهای فهرست جلسات: `teamId`، `status`، `from`، `to` (بازه روی زمان شروع، `from` شامل و `to` غیرشامل) به‌همراه `page` و `pageSize`.
+
+**جلسه با مدت ساخته می‌شود، نه با زمان پایان:**
+
+```json
+{
+  "teamId": "…",
+  "startsAt": "2026-09-16T12:30:00.000Z",
+  "durationMinutes": 90,
+  "type": "TECHNICAL",
+  "location": "زمین شماره ۲",
+  "planId": "…"
+}
+```
+
+`endsAt` یک‌بار در Service محاسبه و ذخیره می‌شود تا تعارض زمانی را خود دیتابیس پاسخ دهد. مدت بین ۱۵ تا ۳۰۰ دقیقه است.
+
+پاسخ `POST` و `PATCH` دقیقاً همان شکل `GET` است — هر نوشتن پس از Commit دوباره با تیم، فصل و برنامه‌اش خوانده می‌شود.
+
+> **`DELETE` لغو می‌کند، حذف نمی‌کند.** دلیل اختیاری با `?reason=` فرستاده می‌شود و روی رکورد می‌ماند. جلسه‌ای که با جلسه دیگری از همان تیم هم‌پوشانی داشته باشد با `CONFLICT` رد می‌شود؛ جلسه پشت‌سرهم مجاز است (docs/BUSINESS_RULES.md §13).
+
+`POST /api/v1/training/plans` می‌تواند تمرین‌ها را هم‌زمان با برنامه بگیرد (`exercises`)، تا کل برنامه در یک درخواست ثبت شود. برنامه بدون `teamId`، برنامه عمومی آکادمی است و فقط برای Caller بدون Scope مجاز است.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `users/:id/roles` (انتساب نقش) | Phase 6 |
-| `training`، `attendance` | Phase 8–9 |
+| `attendance` | Phase 9 |
 | `tryouts`، `applications`، `screening`، `decision` | Phase 10 |
 | `evaluations` | Phase 11 |
 | `matches`، `lineup`، `stats` | Phase 13 |

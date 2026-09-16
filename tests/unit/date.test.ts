@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ACADEMY_TIME_ZONE,
+  addDays,
   addJalaliMonths,
   formatJalali,
   formatJalaliLong,
@@ -12,7 +13,11 @@ import {
   isSameJalaliDay,
   isValidJalaliDate,
   jalaliMonthLength,
+  formatTime,
+  startOfDay,
+  startOfWeek,
   toJalali,
+  weekDays,
 } from "@/lib/utils/date";
 
 describe("Jalali conversion", () => {
@@ -182,5 +187,59 @@ describe("formatting", () => {
     expect(isSameJalaliDay(morning, new Date("2026-09-16T06:00:00Z"))).toBe(
       false,
     );
+  });
+});
+
+describe("the Iranian week", () => {
+  /** Saturday 21 Shahrivar 1405 = 12 September 2026. */
+  const wednesday = new Date("2026-09-16T09:00:00Z");
+
+  it("starts the week on Saturday, whatever day is given", () => {
+    const expected = startOfWeek(wednesday).toISOString();
+    for (let offset = 0; offset < 7; offset++) {
+      const day = addDays(startOfWeek(wednesday), offset);
+      expect(startOfWeek(day).toISOString()).toBe(expected);
+    }
+  });
+
+  it("opens the week at midnight in Tehran, not UTC", () => {
+    // Tehran is UTC+03:30 the year round, so local midnight is 20:30 the day
+    // before in UTC. Getting this wrong shifts an evening session into the
+    // previous day.
+    expect(startOfWeek(wednesday).toISOString()).toBe(
+      "2026-09-11T20:30:00.000Z",
+    );
+    expect(iranianWeekday(startOfWeek(wednesday))).toBe(0);
+  });
+
+  it("gives seven consecutive days, Saturday first", () => {
+    const days = weekDays(wednesday);
+    expect(days).toHaveLength(7);
+    expect(iranianWeekday(days[0]!)).toBe(0);
+    expect(iranianWeekday(days[6]!)).toBe(6);
+
+    for (let index = 1; index < days.length; index++) {
+      expect(days[index]!.getTime() - days[index - 1]!.getTime()).toBe(
+        24 * 60 * 60 * 1000,
+      );
+    }
+  });
+
+  it("puts a late-evening instant on the day Tehran calls it", () => {
+    // 23:00 Tehran on Wednesday is already Thursday in UTC.
+    const lateWednesday = new Date("2026-09-16T19:30:00Z");
+    expect(startOfDay(lateWednesday).toISOString()).toBe(
+      "2026-09-15T20:30:00.000Z",
+    );
+  });
+});
+
+describe("clock times", () => {
+  it("renders the Tehran wall clock in Persian digits", () => {
+    expect(formatTime(new Date("2026-09-16T12:30:00Z"))).toBe("۱۶:۰۰");
+  });
+
+  it("renders midnight as 00:00, never 24:00", () => {
+    expect(formatTime(new Date("2026-09-15T20:30:00Z"))).toBe("۰۰:۰۰");
   });
 });

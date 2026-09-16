@@ -131,6 +131,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | TeamMembership | `playerId + teamId + seasonId` |
 | TryoutApplication | `tryoutId + playerId` |
 | Attendance | `trainingSessionId + playerId` |
+| TrainingSession | — (به §۹ نگاه کنید) |
 | MatchLineup | `matchId + playerId` |
 | PlayerMatchStat | `matchId + playerId` |
 | EvaluationScore | `evaluationId + criterionId` |
@@ -144,7 +145,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | People | Person, Player, Guardian, PlayerGuardian, Staff, StaffTeam | 5 |
 | Enrollment | SchoolEnrollment, TeamMembership | 6 |
 | Journey | PlayerJourneyEvent | 7 |
-| Training | TrainingSession, TrainingPlan, TrainingExercise, Attendance | 8–9 |
+| Training | TrainingSession, TrainingPlan, TrainingExercise (✅ ۸)، Attendance (۹) | 8–9 |
 | Talent | Tryout, TryoutApplication, Screening, EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore | 10–12 |
 | Competition | Match, MatchLineup, PlayerMatchStat | 13 |
 | Performance | PerformanceRecord | 14 |
@@ -155,3 +156,15 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 ## 8. تاریخ و زمان
 
 همه Timestampها در دیتابیس **UTC** ذخیره می‌شوند. تبدیل به تقویم جلالی فقط در لایه نمایش انجام می‌شود. این تصمیم در Phase 1 با یک لایه تبدیل مشترک پیاده می‌شود.
+
+## 9. چرا `TrainingSession` کلید یکتا ندارد
+
+`teamId + startsAt` کلید یکتای بدیهی به‌نظر می‌رسد و در اولین Migration همین Phase هم گذاشته شد. یک تست آن را برداشت:
+
+> جلسه‌ای که لغو می‌شود، جای خود را آزاد می‌کند — پس ثبت دوباره جلسه در همان ساعت مجاز است.
+
+کلید یکتا نمی‌تواند «مگر اینکه لغو شده باشد» را بیان کند، و Index جزئی (`WHERE status <> 'CANCELLED'`) در Schema پریزما قابل تعریف نیست؛ افزودن دستی‌اش در SQL، Drift دائمی می‌سازد.
+
+جایگزین: بررسی تعارض در Service، داخل Transaction و زیر `pg_advisory_xact_lock` روی همان تیم. این همان مسابقه‌ای را می‌گیرد که کلید یکتا قرار بود بگیرد، و استثنا را هم می‌فهمد.
+
+Migration دوم این فاز (`training_clash_is_checked_not_constrained`) دقیقاً همین تغییر است و عمداً squash نشده تا دلیلش در تاریخچه بماند.
