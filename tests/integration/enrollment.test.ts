@@ -122,14 +122,22 @@ describe("coach scope now reaches squad players", () => {
 
   /** Leaving the squad must remove the coach's access, not just the listing. */
   it("drops a player once they leave the squad", async () => {
-    const membership = await prisma.teamMembership.findFirstOrThrow({
-      where: { teamId: u14Id, seasonId, status: "ACTIVE" },
+    // Its own player, not a seeded one: releasing a seeded player would leave
+    // a permanent "left the team" entry on their timeline, and the journey log
+    // is append-only — a test cannot undo what it writes there.
+    const player = await makePlayer(1392, "leaver");
+    const membership = await enrollment.addPlayerToTeam(admin, {
+      playerId: player.id,
+      teamId: u14Id,
+      isPrimary: true,
+      ageException: false,
     });
+
+    expect((await resolveScope(coach)).playerIds).toContain(player.id);
 
     await enrollment.endPlayerMembership(admin, membership.id, "RELEASED");
 
-    const after = await resolveScope(coach);
-    expect(after.playerIds).not.toContain(membership.playerId);
+    expect((await resolveScope(coach)).playerIds).not.toContain(player.id);
 
     // The row itself must still exist — squad history is not deleted.
     const stillThere = await prisma.teamMembership.findUnique({
@@ -138,10 +146,14 @@ describe("coach scope now reaches squad players", () => {
     expect(stillThere).not.toBeNull();
     expect(stillThere?.leftAt).not.toBeNull();
 
-    await prisma.teamMembership.update({
-      where: { id: membership.id },
-      data: { status: "ACTIVE", leftAt: null, isPrimary: true },
+    await prisma.playerJourneyEvent.deleteMany({
+      where: { playerId: player.id },
     });
+    await prisma.playerJourneyEvent.deleteMany({
+      where: { playerId: player.id },
+    });
+    await prisma.teamMembership.deleteMany({ where: { playerId: player.id } });
+    await prisma.person.deleteMany({ where: { id: player.personId } });
   });
 
   it("narrows the coach's player list to their squad", async () => {
@@ -171,6 +183,9 @@ describe("age band at enrolment", () => {
     });
 
     expect(membership.teamId).toBe(u14Id);
+    await prisma.playerJourneyEvent.deleteMany({
+      where: { playerId: player.id },
+    });
     await prisma.teamMembership.deleteMany({ where: { playerId: player.id } });
     await prisma.person.deleteMany({ where: { id: player.personId } });
   });
@@ -204,6 +219,9 @@ describe("age band at enrolment", () => {
     // The exception is written onto the record, not left to memory.
     expect(membership.notes).toContain("استثنای رده سنی");
 
+    await prisma.playerJourneyEvent.deleteMany({
+      where: { playerId: player.id },
+    });
     await prisma.teamMembership.deleteMany({ where: { playerId: player.id } });
     await prisma.person.deleteMany({ where: { id: player.personId } });
   });
@@ -338,6 +356,9 @@ describe("more than one squad per season", () => {
     expect(memberships.filter((m) => m.isPrimary)).toHaveLength(1);
     expect(memberships.find((m) => m.isPrimary)?.teamId).toBe(u16Id);
 
+    await prisma.playerJourneyEvent.deleteMany({
+      where: { playerId: player.id },
+    });
     await prisma.teamMembership.deleteMany({ where: { playerId: player.id } });
     await prisma.person.deleteMany({ where: { id: player.personId } });
   });

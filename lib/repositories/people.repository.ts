@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { dbOr, type Db } from "./transaction";
 
 /** Data access only — no business rules, no authorization (CLAUDE.md §4). */
 
@@ -156,8 +157,9 @@ export async function nextPlayerCode(seasonYear: number): Promise<string> {
 export function createPlayerWithPerson(
   person: Prisma.PersonCreateInput,
   player: Omit<Prisma.PlayerCreateInput, "person">,
+  tx?: Db,
 ) {
-  return prisma.player.create({
+  return dbOr(tx).player.create({
     data: { ...player, person: { create: person } },
     include: { person: true },
   });

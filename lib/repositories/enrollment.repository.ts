@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { Prisma } from "@/lib/generated/prisma/client";
+import { dbOr, type Db } from "./transaction";
 
 /** Data access only — no business rules, no authorization (CLAUDE.md §4). */
 
@@ -94,14 +95,17 @@ export async function listEnrollments(params: {
   return { items, total };
 }
 
-export function createSchoolEnrollment(data: {
-  playerId: string;
-  schoolId: string;
-  seasonId: string;
-  status: Prisma.SchoolEnrollmentCreateInput["status"];
-  notes?: string | undefined;
-}) {
-  return prisma.schoolEnrollment.create({
+export function createSchoolEnrollment(
+  data: {
+    playerId: string;
+    schoolId: string;
+    seasonId: string;
+    status: Prisma.SchoolEnrollmentCreateInput["status"];
+    notes?: string | undefined;
+  },
+  tx?: Db,
+) {
+  return dbOr(tx).schoolEnrollment.create({
     data: {
       player: { connect: { id: data.playerId } },
       school: { connect: { id: data.schoolId } },
@@ -119,8 +123,9 @@ export function createSchoolEnrollment(data: {
 export function updateSchoolEnrollment(
   id: string,
   data: Prisma.SchoolEnrollmentUpdateInput,
+  tx?: Db,
 ) {
-  return prisma.schoolEnrollment.update({
+  return dbOr(tx).schoolEnrollment.update({
     where: { id },
     data,
     include: {
@@ -204,65 +209,72 @@ export function findMembershipById(id: string) {
  * season is demoted in the same transaction — a player with two "home" teams
  * would make attendance and reporting ambiguous.
  */
-export function upsertMembership(data: {
-  playerId: string;
-  teamId: string;
-  seasonId: string;
-  isPrimary: boolean;
-  jerseyNumber?: number | undefined;
-  notes?: string | undefined;
-}) {
-  return prisma.$transaction(async (tx) => {
-    if (data.isPrimary) {
-      await tx.teamMembership.updateMany({
-        where: {
-          playerId: data.playerId,
-          seasonId: data.seasonId,
-          isPrimary: true,
-          teamId: { not: data.teamId },
-        },
-        data: { isPrimary: false },
-      });
-    }
+export async function upsertMembership(
+  data: {
+    playerId: string;
+    teamId: string;
+    seasonId: string;
+    isPrimary: boolean;
+    jerseyNumber?: number | undefined;
+    notes?: string | undefined;
+  },
+  tx?: Db,
+) {
+  const db = dbOr(tx);
 
-    return tx.teamMembership.upsert({
+  if (data.isPrimary) {
+    await db.teamMembership.updateMany({
       where: {
-        playerId_teamId_seasonId: {
-          playerId: data.playerId,
-          teamId: data.teamId,
-          seasonId: data.seasonId,
-        },
+        playerId: data.playerId,
+        seasonId: data.seasonId,
+        isPrimary: true,
+        teamId: { not: data.teamId },
       },
-      update: {
-        status: "ACTIVE",
-        leftAt: null,
-        isPrimary: data.isPrimary,
-        ...(data.jerseyNumber === undefined
-          ? {}
-          : { jerseyNumber: data.jerseyNumber }),
-        ...(data.notes === undefined ? {} : { notes: data.notes }),
-      },
-      create: {
+      data: { isPrimary: false },
+    });
+  }
+
+  return db.teamMembership.upsert({
+    where: {
+      playerId_teamId_seasonId: {
         playerId: data.playerId,
         teamId: data.teamId,
         seasonId: data.seasonId,
-        isPrimary: data.isPrimary,
-        ...(data.jerseyNumber === undefined
-          ? {}
-          : { jerseyNumber: data.jerseyNumber }),
-        ...(data.notes === undefined ? {} : { notes: data.notes }),
       },
-      include: {
-        team: { select: { id: true, name: true } },
-        season: { select: { id: true, name: true } },
-      },
-    });
+    },
+    update: {
+      status: "ACTIVE",
+      leftAt: null,
+      isPrimary: data.isPrimary,
+      ...(data.jerseyNumber === undefined
+        ? {}
+        : { jerseyNumber: data.jerseyNumber }),
+      ...(data.notes === undefined ? {} : { notes: data.notes }),
+    },
+    create: {
+      playerId: data.playerId,
+      teamId: data.teamId,
+      seasonId: data.seasonId,
+      isPrimary: data.isPrimary,
+      ...(data.jerseyNumber === undefined
+        ? {}
+        : { jerseyNumber: data.jerseyNumber }),
+      ...(data.notes === undefined ? {} : { notes: data.notes }),
+    },
+    include: {
+      team: { select: { id: true, name: true } },
+      season: { select: { id: true, name: true } },
+    },
   });
 }
 
 /** Ends a membership without deleting it — the squad history stays. */
-export function endMembership(id: string, status: "INACTIVE" | "RELEASED") {
-  return prisma.teamMembership.update({
+export function endMembership(
+  id: string,
+  status: "INACTIVE" | "RELEASED",
+  tx?: Db,
+) {
+  return dbOr(tx).teamMembership.update({
     where: { id },
     data: { status, leftAt: new Date(), isPrimary: false },
     include: {

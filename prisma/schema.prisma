@@ -453,6 +453,7 @@ model Player {
   guardians         PlayerGuardian[]
   schoolEnrollments SchoolEnrollment[]
   teamMemberships   TeamMembership[]
+  journeyEvents     PlayerJourneyEvent[]
 
   @@index([status])
 }
@@ -632,4 +633,64 @@ model TeamMembership {
   @@index([teamId, status])
   @@index([seasonId])
   @@index([playerId, seasonId])
+}
+
+
+// ---------------------------------------------------------------------------
+// Journey — Phase 7
+//
+// The record of what happened to a player, in order.
+//
+// Append-only: rows are never edited or deleted. An event is a statement that
+// something occurred, and a timeline that can be rewritten is not a record of
+// anything. Corrections are made by adding a further event.
+//
+// Every event is written in the same transaction as the fact it describes, so
+// there can be no membership without its event and no event without its
+// membership (lib/repositories/transaction.ts).
+// ---------------------------------------------------------------------------
+
+enum JourneyEventType {
+  REGISTERED
+  SCHOOL_JOINED
+  TRYOUT_REGISTERED
+  TRYOUT_ACCEPTED
+  TRYOUT_REJECTED
+  EVALUATION
+  TEAM_JOINED
+  TEAM_LEFT
+  PROMOTED
+  TRANSFERRED
+  ACHIEVEMENT
+  OTHER
+}
+
+model PlayerJourneyEvent {
+  id String @id @default(cuid())
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  type JourneyEventType
+
+  /// When it happened, which is not always when it was recorded.
+  occurredAt DateTime @default(now())
+
+  /// One Persian line for the timeline.
+  title       String
+  description String?
+
+  /// What the event was about. Left as loose ids rather than relations: the
+  /// event must survive the team or school being deactivated later.
+  seasonId String?
+  teamId   String?
+  schoolId String?
+
+  /// Who caused it. Null for anything the system recorded on its own.
+  actorId String?
+
+  createdAt DateTime @default(now())
+
+  @@index([playerId, occurredAt])
+  @@index([type])
 }

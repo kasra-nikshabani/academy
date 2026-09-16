@@ -8,6 +8,8 @@ import {
   listPlayerEnrollments,
   listPlayerMemberships,
 } from "@/lib/services/enrollment.service";
+import { getPlayerJourney } from "@/lib/services/journey.service";
+import { PlayerJourney } from "@/components/players/player-journey";
 import { formatJalali, toJalali } from "@/lib/utils/date";
 import { toPersianDigits } from "@/lib/utils/number";
 
@@ -49,10 +51,11 @@ export default async function PlayerPage(props: {
 }) {
   const caller = await requireUser();
   const { id } = await props.params;
-  const [player, enrollments, memberships] = await Promise.all([
+  const [player, enrollments, memberships, journey] = await Promise.all([
     getPlayer(caller, id),
     listPlayerEnrollments(caller, id),
     listPlayerMemberships(caller, id),
+    getPlayerJourney(caller, id),
   ]);
 
   return (
@@ -201,6 +204,15 @@ export default async function PlayerPage(props: {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">مسیر بازیکن</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PlayerJourney entries={journey} />
+        </CardContent>
+      </Card>
     </>
   );
 }

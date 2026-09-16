@@ -32,9 +32,22 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-function CardTitle({ className, ...props }: React.ComponentProps<"div">) {
+/**
+ * A card title is a real heading.
+ *
+ * shadcn ships this as a `<div>`. A card titles a section of the page, so a
+ * screen-reader user navigating by headings would otherwise skip every card
+ * on the screen. Pages put their own title in `<PageHeader>` as the `h1`, so
+ * cards sit one level below at `h2`; pass `as` for the rare card whose title
+ * is decorative.
+ */
+function CardTitle({
+  className,
+  as: Component = "h2",
+  ...props
+}: React.ComponentProps<"h2"> & { as?: "h2" | "h3" | "div" }) {
   return (
-    <div
+    <Component
       data-slot="card-title"
       className={cn(
         "font-heading text-base leading-snug font-medium group-data-[size=sm]/card:text-sm",
