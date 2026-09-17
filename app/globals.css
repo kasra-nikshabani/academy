@@ -19,6 +19,11 @@
   --color-brand: var(--brand);
   --color-brand-foreground: var(--brand-foreground);
   --color-brand-muted: var(--brand-muted);
+  /* The deeper gold, for hover and press states and for the end of a scale.
+     It was defined below from Phase 1 but never mapped here, so every
+     `*-brand-strong` utility in the codebase silently produced nothing —
+     including a hover on the public header's sign-in button. */
+  --color-brand-strong: var(--brand-strong);
 
   /* status */
   --color-success: var(--success);

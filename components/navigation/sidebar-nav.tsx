@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Dumbbell,
+  Filter,
   Search,
   GraduationCap,
   LayoutDashboard,
@@ -39,7 +40,8 @@ export type NavIconName =
   | "training"
   | "plans"
   | "tryouts"
-  | "evaluations";
+  | "evaluations"
+  | "pipeline";
 
 const ICONS: Record<NavIconName, LucideIcon> = {
   home: LayoutDashboard,
@@ -54,6 +56,7 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   plans: ClipboardList,
   tryouts: Search,
   evaluations: ClipboardCheck,
+  pipeline: Filter,
 };
 
 export interface NavItem {
