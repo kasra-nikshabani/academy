@@ -12,6 +12,7 @@ import {
   GraduationCap,
   LayoutDashboard,
   Shapes,
+  Swords,
   Trophy,
   UserCog,
   Users,
@@ -41,7 +42,8 @@ export type NavIconName =
   | "plans"
   | "tryouts"
   | "evaluations"
-  | "pipeline";
+  | "pipeline"
+  | "matches";
 
 const ICONS: Record<NavIconName, LucideIcon> = {
   home: LayoutDashboard,
@@ -57,6 +59,7 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   tryouts: Search,
   evaluations: ClipboardCheck,
   pipeline: Filter,
+  matches: Swords,
 };
 
 export interface NavItem {

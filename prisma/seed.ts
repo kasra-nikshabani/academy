@@ -1198,6 +1198,116 @@ async function main(): Promise<void> {
       console.info("  \u2713 1 evaluation assigned to the seeded coach");
     }
 
+    // --- matches ----------------------------------------------------------
+    //
+    // One played and one to come, so the fixtures page has both halves on a
+    // fresh database. Anchored to the current week for the same reason the
+    // training sessions are.
+    const matchSeeds = [
+      {
+        teamId: u14.id,
+        opponent: "ذوب‌آهن اصفهان",
+        competition: "لیگ نوجوانان استان",
+        homeAway: "HOME" as const,
+        offsetDays: -5,
+        hour: 16,
+        goalsFor: 3,
+        goalsAgainst: 1,
+        status: "COMPLETED" as const,
+      },
+      {
+        teamId: u14.id,
+        opponent: "فولاد هرمزگان",
+        competition: "لیگ نوجوانان استان",
+        homeAway: "AWAY" as const,
+        offsetDays: 6,
+        hour: 17,
+        goalsFor: null,
+        goalsAgainst: null,
+        status: "SCHEDULED" as const,
+      },
+    ];
+
+    let matchCount = 0;
+
+    for (const item of matchSeeds) {
+      const kickoffAt = new Date(
+        addDays(startOfWeek(now), item.offsetDays).getTime() +
+          item.hour * HOUR_MS,
+      );
+
+      const seasonForMatch = await prisma.season.findFirst({
+        where: { startDate: { lte: kickoffAt }, endDate: { gte: kickoffAt } },
+        orderBy: { startYear: "desc" },
+      });
+      if (!seasonForMatch) continue;
+
+      const already = await prisma.match.findFirst({
+        where: { teamId: item.teamId, kickoffAt },
+      });
+      if (already) {
+        matchCount += 1;
+        continue;
+      }
+
+      const match = await prisma.match.create({
+        data: {
+          teamId: item.teamId,
+          seasonId: seasonForMatch.id,
+          opponent: item.opponent,
+          competition: item.competition,
+          homeAway: item.homeAway,
+          venue: "ورزشگاه صفائیه — اصفهان",
+          kickoffAt,
+          endsAt: new Date(kickoffAt.getTime() + 80 * 60 * 1000),
+          status: item.status,
+          ...(item.goalsFor === null
+            ? {}
+            : { goalsFor: item.goalsFor, goalsAgainst: item.goalsAgainst }),
+        },
+      });
+      matchCount += 1;
+
+      // The squad that played, and what they did.
+      const squad = await prisma.teamMembership.findMany({
+        where: {
+          teamId: item.teamId,
+          seasonId: seasonForMatch.id,
+          status: "ACTIVE",
+          leftAt: null,
+        },
+        select: { playerId: true },
+        orderBy: { createdAt: "asc" },
+      });
+
+      for (const [index, member] of squad.entries()) {
+        await prisma.matchLineup.create({
+          data: {
+            matchId: match.id,
+            playerId: member.playerId,
+            role: index === 0 ? "STARTER" : "SUBSTITUTE",
+            shirtNumber: index + 7,
+          },
+        });
+
+        if (item.status !== "COMPLETED") continue;
+
+        await prisma.playerMatchStat.create({
+          data: {
+            matchId: match.id,
+            playerId: member.playerId,
+            // The starter played the match; the substitute came on late.
+            minutesPlayed: index === 0 ? 80 : 20,
+            goals: index === 0 ? 2 : 0,
+            assists: index === 0 ? 0 : 1,
+            recordedAt: match.endsAt,
+          },
+        });
+      }
+    }
+
+    console.info(`  \u2713 ${matchCount} matches`);
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );

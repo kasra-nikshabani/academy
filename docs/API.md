@@ -446,12 +446,43 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 همه شمارش‌ها در دیتابیس انجام می‌شوند، نه با بارگذاری درخواست‌ها و گروه‌بندی در حافظه — قیف همه دوره‌های تاریخ آکادمی را پوشش می‌دهد.
 
+### مسابقات
+
+| مسیر | متد | مجوز |
+|---|---|---|
+| `/api/v1/matches` | `GET` | `match:read` + Scope تقویم |
+| `/api/v1/matches` | `POST` | `match:write` + Scope تیم |
+| `/api/v1/matches/:id` | `GET` / `PATCH` / `DELETE` | `match:read` / `match:write` |
+| `/api/v1/matches/:id/lineup` | `PUT` | `match:write` + Scope تیم |
+| `/api/v1/matches/:id/stats` | `PUT` | `match:write` + Scope تیم |
+| `/api/v1/players/:id/matches` | `GET` | `match:read` + Scope **بازیکن** |
+
+خواندن مسابقه با Scope تقویم انجام می‌شود (مثل تمرین)، پس ولی می‌تواند بازی فرزندش را ببیند. نوشتن با Scope تیم. و پرونده مسابقات یک بازیکن با Scope بازیکن — همان تفکیکی که دفتر حضور و غیاب دارد.
+
+**مسابقه با ساعت شروع و مدت ساخته می‌شود:**
+
+```json
+{
+  "teamId": "…",
+  "opponent": "ذوب‌آهن اصفهان",
+  "competition": "لیگ نوجوانان استان",
+  "homeAway": "HOME",
+  "kickoffAt": "2026-09-07T12:30:00.000Z",
+  "durationMinutes": 80
+}
+```
+
+**`PUT` روی ترکیب، کل ترکیب است.** بازیکنی که در `entries` نیاید حذف می‌شود؛ فرستادن دوباره همان ترکیب همان نتیجه را می‌دهد. هر بازیکن باید عضو همان تیم در همان فصل باشد، وگرنه `VALIDATION_ERROR`.
+
+`PUT` روی آمار فقط بازیکنان ترکیب را می‌پذیرد و فقط پس از شروع بازی.
+
+`DELETE` مسابقه را لغو می‌کند؛ `?status=POSTPONED` آن را به تعویق می‌اندازد و `?reason=` دلیل را روی رکورد می‌نویسد.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |
 |---|---|
 | `users/:id/roles` (انتساب نقش) | Phase 6 |
-| `matches`، `lineup`، `stats` | Phase 13 |
 | `performance` | Phase 14 |
 | `notifications` | Phase 15 |
 | `dashboard/academy` | Phase 16 |
