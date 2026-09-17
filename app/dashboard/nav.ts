@@ -60,11 +60,14 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
   }
 
   if (hasPermission(user, "tryout:read")) {
-    items.push({
-      href: "/dashboard/tryouts",
-      label: "استعدادیابی",
-      icon: "tryouts",
-    });
+    items.push(
+      { href: "/dashboard/tryouts", label: "استعدادیابی", icon: "tryouts" },
+      {
+        href: "/dashboard/talent",
+        label: "قیف استعدادیابی",
+        icon: "pipeline",
+      },
+    );
   }
 
   // A coach reaches trial players through here and nowhere else — the

@@ -175,6 +175,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `ApplicationStatusLookup` | `components/tryouts/application-status-lookup.tsx` |
 | `ApplicationActions` | `components/tryouts/application-actions.tsx` |
 | `EvaluationSheet` | `components/evaluations/evaluation-sheet.tsx` |
+| `TalentFunnel` | `components/talent/talent-funnel.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -186,7 +187,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 
 ### Domain Component ها
 
-PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · ~~EvaluationCard~~ (✅ ۱۱ — به‌صورت `EvaluationSheet`) · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · PerformanceChart · TalentFunnel · StatCard — هرکدام در فاز دامنه خودش.
+PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · ~~EvaluationCard~~ (✅ ۱۱ — به‌صورت `EvaluationSheet`) · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · PerformanceChart · ~~TalentFunnel~~ (✅ ۱۲) · StatCard — هرکدام در فاز دامنه خودش.
 
 ### چرا دفتر حضور جدول نشد
 
@@ -213,6 +214,14 @@ PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸
 این Variant پس‌زمینه روشن خودش را می‌گذاشت اما رنگ متن را از والدش به ارث می‌برد. روی نوار تیره (Sidebar و Header عمومی) نتیجه، متن نزدیک‌به‌سفید روی دکمه نزدیک‌به‌سفید بود — نسبت کنتراست حدود ۱٫۱، فقط با Hover خوانا (چون Hover رنگ را ست می‌کرد).
 
 اصلاح در خود Variant انجام شد نه در صفحه: هر Variant ای که پس‌زمینه می‌گذارد باید رنگ متنش را هم بگذارد.
+
+### قیف، بدون کتابخانه نمودار
+
+`TalentFunnel` با میله‌های نسبی ساخته شده، نه با Recharts. چهار میله و برچسب‌هایشان یک وابستگی را توجیه نمی‌کنند، و عناصر ساده بدون هیچ Override ای راست‌به‌چپ درست می‌شوند. Recharts همچنان برای Phase 14 مانده، جایی که نمودار واقعی لازم است.
+
+هر میله سهمی از **کل درخواست‌ها** است، نه از میله بالایی. این عرض‌ها را صادق نگه می‌دارد وقتی مرحله‌ای از مرحله قبل بزرگ‌تر است — که پیش می‌آید، و قیفی که هر مرحله را نسبت به قبلی مقیاس کند مجبور است پنهانش کند.
+
+هر میله `role="img"` با نامی مثل «پذیرفته‌شده: ۵ نفر، ۵۰ درصد» دارد؛ همان چیزی که Screen Reader می‌خواند و همان چیزی که تست E2E روی آن Assert می‌کند (برچسب متنی روی صفحه دوبار تکرار می‌شود و یکتا نیست).
 
 ### چرا بدون React Hook Form
 

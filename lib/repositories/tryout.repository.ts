@@ -260,3 +260,195 @@ export function countPendingScreenings(tryoutId: string) {
     where: { tryoutId, screening: { status: "PENDING" } },
   });
 }
+
+// --- the talent pipeline (Phase 12) -----------------------------------------
+
+/**
+ * Narrows the pipeline to a season, a sport, or one trial.
+ *
+ * Applied to the `tryout` relation rather than copied onto the application,
+ * so there is one place that decides what "this season's pipeline" means.
+ */
+export interface PipelineScope {
+  seasonId?: string | undefined;
+  sportId?: string | undefined;
+  tryoutId?: string | undefined;
+}
+
+function pipelineWhere(scope: PipelineScope): Prisma.TryoutApplicationWhereInput {
+  if (!scope.seasonId && !scope.sportId && !scope.tryoutId) return {};
+
+  return {
+    ...(scope.tryoutId ? { tryoutId: scope.tryoutId } : {}),
+    ...(scope.seasonId || scope.sportId
+      ? {
+          tryout: {
+            ...(scope.seasonId ? { seasonId: scope.seasonId } : {}),
+            ...(scope.sportId ? { sportId: scope.sportId } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
+/**
+ * Every number the funnel needs, counted in the database.
+ *
+ * Eleven counts rather than loading applications and grouping them in memory:
+ * the pipeline spans every trial the academy has ever run, and a page that
+ * pulls all of it to count it stops working the year the club gets popular.
+ */
+export async function countPipeline(scope: PipelineScope) {
+  const base = pipelineWhere(scope);
+  const count = (where: Prisma.TryoutApplicationWhereInput) =>
+    prisma.tryoutApplication.count({ where: { ...base, ...where } });
+
+  const [
+    applied,
+    passedScreening,
+    evaluated,
+    accepted,
+    acceptedAndEvaluated,
+    rejectedAtScreening,
+    rejectedAfterScreening,
+    waitlisted,
+    cancelled,
+    pendingScreening,
+    awaitingEvaluator,
+    awaitingDecision,
+  ] = await Promise.all([
+    count({}),
+    count({ screening: { status: "APPROVED" } }),
+    count({ evaluations: { some: { status: "SUBMITTED" } } }),
+    count({ status: "ACCEPTED" }),
+    count({
+      status: "ACCEPTED",
+      evaluations: { some: { status: "SUBMITTED" } },
+    }),
+    // Rejected while the paperwork was being checked, rather than after.
+    count({ status: "REJECTED", screening: { status: "REJECTED" } }),
+    count({ status: "REJECTED", screening: { status: { not: "REJECTED" } } }),
+    count({ status: "WAITLIST" }),
+    count({ status: "CANCELLED" }),
+    count({
+      screening: { status: "PENDING" },
+      status: { notIn: ["ACCEPTED", "REJECTED", "CANCELLED", "WAITLIST"] },
+    }),
+    // Past screening, but nobody has been asked to watch them play.
+    count({
+      status: "EVALUATION",
+      decidedAt: null,
+      evaluations: { none: {} },
+    }),
+    // Watched, and now waiting on a decision.
+    count({
+      status: "EVALUATION",
+      decidedAt: null,
+      evaluations: { some: { status: "SUBMITTED" } },
+    }),
+  ]);
+
+  return {
+    applied,
+    passedScreening,
+    evaluated,
+    accepted,
+    acceptedAndEvaluated,
+    rejectedAtScreening,
+    rejectedAfterScreening,
+    waitlisted,
+    cancelled,
+    pendingScreening,
+    awaitingEvaluator,
+    awaitingDecision,
+  };
+}
+
+/** Trials currently taking registrations. */
+export function countOpenTryouts(scope: PipelineScope) {
+  return prisma.tryout.count({
+    where: {
+      status: "OPEN",
+      ...(scope.seasonId ? { seasonId: scope.seasonId } : {}),
+      ...(scope.sportId ? { sportId: scope.sportId } : {}),
+      ...(scope.tryoutId ? { id: scope.tryoutId } : {}),
+    },
+  });
+}
+
+/** Evaluations handed to a coach and not yet filed. */
+export function countUnfinishedEvaluations(scope: PipelineScope) {
+  const applicationFilter = pipelineWhere(scope);
+
+  return prisma.evaluation.count({
+    where: {
+      status: "DRAFT",
+      // The scalar, not the relation: "has an application" and "that
+      // application matches the scope" are two different questions, and
+      // mixing them into one relation filter is what Prisma rejects.
+      applicationId: { not: null },
+      ...(Object.keys(applicationFilter).length > 0
+        ? { application: { is: applicationFilter } }
+        : {}),
+    },
+  });
+}
+
+/** The three stages of "waiting for a person", oldest first. */
+export type PipelineQueue =
+  | "awaitingScreening"
+  | "awaitingEvaluator"
+  | "awaitingDecision";
+
+const QUEUE_WHERE: Record<PipelineQueue, Prisma.TryoutApplicationWhereInput> = {
+  awaitingScreening: {
+    screening: { status: "PENDING" },
+    status: { notIn: ["ACCEPTED", "REJECTED", "CANCELLED", "WAITLIST"] },
+  },
+  awaitingEvaluator: {
+    status: "EVALUATION",
+    decidedAt: null,
+    evaluations: { none: {} },
+  },
+  awaitingDecision: {
+    status: "EVALUATION",
+    decidedAt: null,
+    evaluations: { some: { status: "SUBMITTED" } },
+  },
+};
+
+export function listPipelineQueue(params: {
+  queue: PipelineQueue;
+  scope: PipelineScope;
+  take: number;
+}) {
+  return prisma.tryoutApplication.findMany({
+    where: { ...pipelineWhere(params.scope), ...QUEUE_WHERE[params.queue] },
+    // Oldest first: the person who has been waiting longest goes to the top.
+    orderBy: { submittedAt: "asc" },
+    take: params.take,
+    include: {
+      ...APPLICATION_INCLUDE,
+      tryout: {
+        select: {
+          id: true,
+          title: true,
+          ageGroupId: true,
+          sportId: true,
+          ageGroup: { select: { code: true, name: true } },
+        },
+      },
+      evaluations: {
+        where: { status: "SUBMITTED" },
+        select: {
+          id: true,
+          overallScore: true,
+          recommendation: true,
+          evaluator: {
+            select: { person: { select: { firstName: true, lastName: true } } },
+          },
+        },
+      },
+    },
+  });
+}
