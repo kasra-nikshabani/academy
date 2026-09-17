@@ -11,6 +11,9 @@ import {
 import { getPlayerJourney } from "@/lib/services/journey.service";
 import { getPlayerRegister } from "@/lib/services/attendance.service";
 import { listPlayerEvaluations } from "@/lib/services/evaluation.service";
+import { getPlayerMatchRecord } from "@/lib/services/match.service";
+import { OUTCOME_CLASS, OUTCOME_LABEL } from "@/components/matches/match-meta";
+import { matchOutcome } from "@/lib/services/match-result";
 import {
   RECOMMENDATION_CLASS,
   RECOMMENDATION_LABEL,
@@ -77,6 +80,10 @@ export default async function PlayerPage(props: {
   const evaluations = hasPermission(caller, "evaluation:read")
     ? await listPlayerEvaluations(caller, id).catch(() => [])
     : [];
+
+  const matches = hasPermission(caller, "match:read")
+    ? await getPlayerMatchRecord(caller, id).catch(() => null)
+    : null;
 
   return (
     <>
@@ -236,6 +243,82 @@ export default async function PlayerPage(props: {
               rate={attendance.rate}
               entries={attendance.entries}
             />
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {matches && matches.totals.appearances > 0 ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">مسابقات</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <dl className="flex flex-wrap gap-x-6 gap-y-3">
+              {[
+                { label: "بازی", value: matches.totals.appearances },
+                { label: "ترکیب اصلی", value: matches.totals.starts },
+                { label: "دقیقه", value: matches.totals.minutesPlayed },
+                { label: "گل", value: matches.totals.goals },
+                { label: "پاس گل", value: matches.totals.assists },
+                { label: "کارت زرد", value: matches.totals.yellowCards },
+                { label: "کارت قرمز", value: matches.totals.redCards },
+              ].map((item) => (
+                <div key={item.label}>
+                  <dt className="text-xs text-muted-foreground">
+                    {item.label}
+                  </dt>
+                  <dd className="text-lg font-bold tabular-nums">
+                    {toPersianDigits(item.value)}
+                  </dd>
+                </div>
+              ))}
+              {matches.goalsPerAppearance !== null ? (
+                <div>
+                  <dt className="text-xs text-muted-foreground">
+                    گل در هر بازی
+                  </dt>
+                  <dd className="text-lg font-bold tabular-nums">
+                    {toPersianDigits(matches.goalsPerAppearance)}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+
+            <ul className="divide-y divide-border rounded-lg border border-border">
+              {matches.entries.slice(0, 8).map((entry) => {
+                const outcome = matchOutcome(entry.match);
+
+                return (
+                  <li
+                    key={entry.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm"
+                  >
+                    <span>
+                      {entry.match.opponent}
+                      <span className="ms-2 text-xs text-muted-foreground">
+                        {formatJalali(entry.match.kickoffAt)}
+                        {entry.minutesPlayed > 0
+                          ? ` · ${toPersianDigits(entry.minutesPlayed)}′`
+                          : " · بازی نکرد"}
+                      </span>
+                    </span>
+
+                    <span className="flex items-center gap-2 text-xs">
+                      {entry.goals > 0 ? (
+                        <span className="text-muted-foreground">
+                          {toPersianDigits(entry.goals)} گل
+                        </span>
+                      ) : null}
+                      {outcome ? (
+                        <Badge className={cn(OUTCOME_CLASS[outcome])}>
+                          {OUTCOME_LABEL[outcome]}
+                        </Badge>
+                      ) : null}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
           </CardContent>
         </Card>
       ) : null}

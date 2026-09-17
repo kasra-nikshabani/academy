@@ -87,6 +87,14 @@ export default async function globalTeardown(): Promise<void> {
       DELETE FROM "StaffTeam"
        WHERE "teamId" IN (SELECT id FROM "Team" WHERE slug LIKE 'e2e-%')
     `);
+    // Matches hold their team with `Restrict` too, and their lineup and stats
+    // cascade from the match rather than from the team — so the fixture goes
+    // first and takes both with it.
+    await client.query(`
+      DELETE FROM "Match"
+       WHERE "teamId" IN (SELECT id FROM "Team" WHERE slug LIKE 'e2e-%')
+    `);
+
     await client.query(`DELETE FROM "Team" WHERE slug LIKE 'e2e-%'`);
 
     // 3. Trials a test created. Applications hold their tryout with Restrict,

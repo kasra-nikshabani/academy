@@ -132,6 +132,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | TryoutApplication | `tryoutId + playerId` · و `trackingCode` یکتا |
 | Attendance | `trainingSessionId + playerId` |
 | TrainingSession | — (به §۹ نگاه کنید) |
+| Match | — به همان دلیل `TrainingSession` |
 | MatchLineup | `matchId + playerId` |
 | PlayerMatchStat | `matchId + playerId` |
 | EvaluationScore | `evaluationId + criterionId` |
@@ -147,7 +148,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | Journey | PlayerJourneyEvent | 7 |
 | Training | TrainingSession, TrainingPlan, TrainingExercise (✅ ۸)، Attendance (✅ ۹) | 8–9 |
 | Talent | Tryout, TryoutApplication, Screening (✅ ۱۰)، EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore (✅ ۱۱) | 10–12 |
-| Competition | Match, MatchLineup, PlayerMatchStat | 13 |
+| Competition | Match, MatchLineup, PlayerMatchStat (✅ ۱۳) | 13 |
 | Performance | PerformanceRecord | 14 |
 | Communication | Notification, Announcement | 15 |
 | Documents | Document | 18 |

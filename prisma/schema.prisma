@@ -283,6 +283,7 @@ model Season {
   teamMemberships   TeamMembership[]
   trainingSessions  TrainingSession[]
   tryouts           Tryout[]
+  matches           Match[]
 
   @@index([status])
   @@index([startYear])
@@ -335,6 +336,7 @@ model Team {
 
   trainingPlans    TrainingPlan[]
   trainingSessions TrainingSession[]
+  matches          Match[]
 
   @@index([sportId, isActive])
   @@index([ageGroupId])
@@ -463,6 +465,8 @@ model Player {
   attendance         Attendance[]
   tryoutApplications TryoutApplication[]
   evaluations        Evaluation[]
+  matchLineups       MatchLineup[]
+  matchStats         PlayerMatchStat[]
 
   @@index([status])
 }
@@ -1221,4 +1225,159 @@ model EvaluationScore {
   /// One score per criterion per evaluation (CLAUDE.md §9).
   @@unique([evaluationId, criterionId])
   @@index([criterionId])
+}
+
+// ---------------------------------------------------------------------------
+// Competition — Phase 13
+//
+//   Match ──< MatchLineup      (who was picked)
+//         └─< PlayerMatchStat  (what they did)
+//
+// Two tables keyed the same way on purpose. Selection happens before the
+// whistle and stats after it, and a player can be named on the sheet and never
+// come on — an unused substitute is a lineup row with no stat row, which is
+// exactly the truth of that afternoon (CLAUDE.md §9).
+//
+// **Only the squad plays.** A lineup may name a player who belongs to this
+// team in this season and nobody else. Without that a coach could file match
+// statistics against any player in the academy, and the row would look every
+// bit as legitimate as a real one (docs/BUSINESS_RULES.md §18) — the same
+// rule, for the same reason, as the attendance register.
+//
+// The opponent is free text. Other clubs are not in this database and
+// modelling them would mean maintaining a directory of every youth side in
+// the province to write "سپاهان ب" on a fixture.
+// ---------------------------------------------------------------------------
+
+enum MatchStatus {
+  SCHEDULED
+  LIVE
+  COMPLETED
+  POSTPONED
+  CANCELLED
+}
+
+enum HomeAway {
+  HOME
+  AWAY
+  NEUTRAL
+}
+
+/// Whether a player started, came on, or sat.
+enum LineupRole {
+  STARTER
+  SUBSTITUTE
+}
+
+model Match {
+  id String @id @default(cuid())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Restrict)
+
+  /// Resolved from the kick-off date, not from whichever season is active —
+  /// a pre-season friendly entered in June belongs to the season it is played
+  /// in. Same rule as a training session.
+  seasonId String
+  season   Season @relation(fields: [seasonId], references: [id], onDelete: Restrict)
+
+  /// The other side, as the club writes it on the fixture list.
+  opponent    String
+  /// League, cup, friendly — free text, because what counts as a competition
+  /// differs by sport and by season and is not ours to enumerate.
+  competition String?
+
+  homeAway HomeAway @default(HOME)
+  venue    String?
+
+  /// Stored UTC, shown Jalali in Tehran time. `endsAt` is derived from the
+  /// duration so a clash can be answered by the database, exactly as for
+  /// training.
+  kickoffAt DateTime
+  endsAt    DateTime
+
+  status MatchStatus @default(SCHEDULED)
+
+  /// **Ours and theirs**, rather than home and away. A score kept as
+  /// home/away has to be read together with `homeAway` to know who won, and
+  /// that is one join too many between a number and its meaning.
+  goalsFor     Int?
+  goalsAgainst Int?
+
+  notes        String?
+  /// Why a cancelled or postponed fixture did not happen.
+  cancelReason String?
+
+  createdById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lineup MatchLineup[]
+  stats  PlayerMatchStat[]
+
+  /// No unique key on `teamId + kickoffAt`, for the same reason as
+  /// `TrainingSession`: a cancelled fixture frees its slot, and a rule with an
+  /// exception is not a unique key. The clash check lives in the service under
+  /// a per-team advisory lock.
+  @@index([teamId, kickoffAt])
+  @@index([kickoffAt])
+  @@index([seasonId])
+  @@index([status, kickoffAt])
+}
+
+model MatchLineup {
+  id String @id @default(cuid())
+
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  role LineupRole @default(STARTER)
+
+  /// The number on the back that day, which is not always the squad number.
+  shirtNumber Int?
+  /// Where they played in this match, which is not always their usual post.
+  position    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// A player is named once on a team sheet (CLAUDE.md §9).
+  @@unique([matchId, playerId])
+  @@index([matchId, role])
+}
+
+model PlayerMatchStat {
+  id String @id @default(cuid())
+
+  matchId String
+  match   Match  @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  /// Zero is a real answer — an unused substitute who is recorded played no
+  /// minutes — which is why this is not nullable.
+  minutesPlayed Int @default(0)
+
+  goals   Int @default(0)
+  assists Int @default(0)
+
+  yellowCards Int @default(0)
+  redCards    Int @default(0)
+
+  notes String?
+
+  recordedById String?
+  recordedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// One line per player per match (CLAUDE.md §9).
+  @@unique([matchId, playerId])
+  @@index([playerId, recordedAt])
 }
