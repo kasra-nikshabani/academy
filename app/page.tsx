@@ -65,7 +65,7 @@ export default async function HomePage() {
           مرجع Design System:{" "}
           <a
             href="/style-guide"
-            className="decoration-brand-strong font-medium underline underline-offset-4"
+            className="font-medium underline decoration-brand-strong underline-offset-4"
           >
             راهنمای طراحی
           </a>

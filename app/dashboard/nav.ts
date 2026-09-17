@@ -72,6 +72,14 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
 
   // A coach reaches trial players through here and nowhere else — the
   // assignment is their route in, not a tryout permission (BUSINESS_RULES §16).
+  if (hasPermission(user, "match:read")) {
+    items.push({
+      href: "/dashboard/matches",
+      label: "مسابقات",
+      icon: "matches",
+    });
+  }
+
   if (hasPermission(user, "evaluation:read")) {
     items.push({
       href: "/dashboard/evaluations",

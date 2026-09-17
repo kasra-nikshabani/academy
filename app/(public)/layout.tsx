@@ -34,7 +34,7 @@ export default function PublicLayout({
                 thing on this bar a member is looking for. */}
             <Button
               size="sm"
-              className="hover:bg-brand-strong bg-brand text-brand-foreground"
+              className="bg-brand text-brand-foreground hover:bg-brand-strong"
               asChild
             >
               <Link href="/login">ورود</Link>
