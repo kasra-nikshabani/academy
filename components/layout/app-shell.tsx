@@ -3,11 +3,14 @@ import { LogOut } from "lucide-react";
 import { BrandLockup } from "@/components/brand/brand-lockup";
 import { SidebarNav, type NavItem } from "@/components/navigation/sidebar-nav";
 import { SignOutButton } from "@/app/dashboard/sign-out-button";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export interface AppShellProps {
   navItems: readonly NavItem[];
   /** Role names, shown under the brand so a user knows how they signed in. */
   roleNames: readonly string[];
+  /** Unread notifications. Zero renders the bell without a badge. */
+  unreadCount?: number;
   children: React.ReactNode;
 }
 
@@ -20,13 +23,19 @@ export interface AppShellProps {
  * On phones the sidebar drops away and becomes a horizontal strip — coaches
  * and parents work from a phone (docs/UI_UX.md §6).
  */
-export function AppShell({ navItems, roleNames, children }: AppShellProps) {
+export function AppShell({
+  navItems,
+  roleNames,
+  unreadCount = 0,
+  children,
+}: AppShellProps) {
   return (
     <div className="flex min-h-dvh flex-col lg:flex-row">
       <aside className="bg-sidebar text-sidebar-foreground lg:w-64 lg:shrink-0">
         <div className="flex items-center justify-between gap-3 px-4 py-4 lg:block lg:space-y-4">
           <BrandLockup size="sm" className="[&_p:last-child]:text-white/60" />
-          <div className="lg:hidden">
+          <div className="flex items-center gap-1 lg:hidden">
+            <NotificationBell unreadCount={unreadCount} />
             <SignOutButton>
               <LogOut className="size-4" />
               خروج
@@ -44,7 +53,8 @@ export function AppShell({ navItems, roleNames, children }: AppShellProps) {
           <p className="text-xs text-white/50">
             {roleNames.length > 0 ? roleNames.join(" · ") : "بدون نقش"}
           </p>
-          <div className="mt-2">
+          <div className="mt-2 flex items-center gap-1">
+            <NotificationBell unreadCount={unreadCount} />
             <SignOutButton>
               <LogOut className="size-4" />
               خروج

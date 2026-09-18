@@ -99,6 +99,16 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     });
   }
 
+  // The inbox is reached from the bell in the shell, which is on every page;
+  // the sidebar entry is for the announcements a sender writes.
+  if (hasPermission(user, "notification:send")) {
+    items.push({
+      href: "/dashboard/announcements",
+      label: "اطلاعیه‌ها",
+      icon: "announcements",
+    });
+  }
+
   if (hasPermission(user, "staff:read")) {
     items.push({
       href: "/dashboard/people/staff",

@@ -11,6 +11,7 @@ import {
   Search,
   GraduationCap,
   LayoutDashboard,
+  Megaphone,
   Shapes,
   Swords,
   TrendingUp,
@@ -45,7 +46,8 @@ export type NavIconName =
   | "evaluations"
   | "pipeline"
   | "matches"
-  | "performance";
+  | "performance"
+  | "announcements";
 
 const ICONS: Record<NavIconName, LucideIcon> = {
   home: LayoutDashboard,
@@ -63,6 +65,7 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   pipeline: Filter,
   matches: Swords,
   performance: TrendingUp,
+  announcements: Megaphone,
 };
 
 export interface NavItem {

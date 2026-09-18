@@ -86,6 +86,13 @@ export const ROLE_DEFINITIONS: readonly RoleDefinition[] = [
       "performance:read",
       "performance:write",
       "notification:read",
+      // A coach announces to their own squads (Phase 15). The permission says
+      // they may send; **scope** says to whom — `createAnnouncement` refuses a
+      // scoped caller anything wider than a team they are assigned to, so this
+      // does not reach the academy. Without it the person who actually knows
+      // that Thursday's session moved has to ask someone else to say so, which
+      // is how a club ends up telling its families on WhatsApp instead.
+      "notification:send",
       "document:read",
       "self:read",
     ],

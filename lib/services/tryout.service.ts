@@ -20,6 +20,7 @@ import {
   linkGuardianToPlayer,
 } from "@/lib/repositories/people.repository";
 import * as repo from "@/lib/repositories/tryout.repository";
+import { notifyPlayer } from "./notification.service";
 import { runInTransaction, type Db } from "@/lib/repositories/transaction";
 import { toJalali } from "@/lib/utils/date";
 import type {
@@ -662,6 +663,27 @@ export async function decideApplication(
         },
         tx,
       );
+
+      // The fourth step of the acceptance transaction, owed since Phase 10
+      // (docs/BUSINESS_RULES.md §3). **Inside** the transaction, not after:
+      // a family told they were accepted by a write that then rolled back is
+      // worse than one told late.
+      //
+      // It reaches the player *and* their guardians, which is the reason this
+      // module addresses a `Person` rather than a `User` — the family that
+      // just applied has no account yet, and this is the message they most
+      // need.
+      await notifyPlayer(
+        application.playerId,
+        {
+          type: "TRYOUT",
+          title: `پذیرش در ${tryout.title}`,
+          body: `شما به ${team.name} دعوت شدید.`,
+          link: "/dashboard/notifications",
+          actorId: caller.id,
+        },
+        tx,
+      );
     }
 
     if (input.decision === "REJECTED") {
@@ -672,6 +694,21 @@ export async function decideApplication(
           title: `عدم پذیرش در ${tryout.title}`,
           description: input.note ?? "پس از ارزیابی",
           seasonId: tryout.seasonId,
+          actorId: caller.id,
+        },
+        tx,
+      );
+
+      // Told too. A family that hears nothing assumes the decision has not
+      // been made and keeps asking, which is worse for them and for the
+      // office than a plain answer.
+      await notifyPlayer(
+        application.playerId,
+        {
+          type: "TRYOUT",
+          title: `نتیجه ${tryout.title}`,
+          body: input.note ?? "پس از ارزیابی، پذیرش انجام نشد.",
+          link: "/dashboard/notifications",
           actorId: caller.id,
         },
         tx,

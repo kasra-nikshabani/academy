@@ -150,7 +150,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | Talent | Tryout, TryoutApplication, Screening (✅ ۱۰)، EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore (✅ ۱۱) | 10–12 |
 | Competition | Match, MatchLineup, PlayerMatchStat (✅ ۱۳) | 13 |
 | Performance | PerformanceRecord (✅ ۱۴) | 14 |
-| Communication | Notification, Announcement | 15 |
+| Communication | Notification, Announcement (✅ ۱۵) | 15 |
 | Documents | Document | 18 |
 | Audit | AuditLog | 19 |
 
@@ -203,3 +203,17 @@ new Date("2026-09-16T13:02:00Z")
 ### چرا `measuredAt` نیمه‌شب تهران است
 
 اندازه‌گیری به جلسه‌ای تعلق دارد که در آن گرفته شده، و نتایج معمولاً چند روز بعد تایپ می‌شوند. روندی که روی زمان ورود داده کشیده شود، روند کاغذبازی مربی است نه روند بازیکن.
+
+## 11. چرا `Notification` به `Person` وصل است و نه به `User`
+
+قاعده §۳ کسب‌وکار می‌گوید پذیرش متقاضی باید به خانواده اطلاع دهد. خانواده‌ای که تازه در استعدادیابی ثبت‌نام کرده حساب کاربری ندارد — ثبت‌نام عمومی `Person` می‌سازد، نه `User`. اگر اعلان به `User` آدرس می‌گرفت، آن یک پیام گیرنده‌ای نمی‌داشت.
+
+`Person.userId` اختیاری است و توضیحش از Phase 5 همین را می‌گفت. اعلان روی شخص می‌نشیند؛ Login — اگر بیاید — فقط راهِ خواندن آن است.
+
+جانبی اما مهم: `Person.mobile` روی همان ردیف است، پس روزی که Gateway پیامک وصل شود، گیرنده از قبل قابل تماس است.
+
+## 12. `readAt` به‌جای `isRead`
+
+«کی این را دید» سؤالی است که پرسیده می‌شود و یک Boolean نمی‌تواند جوابش دهد. و چون Timestamp است، خواندن دوباره آن را جابه‌جا نمی‌کند: به‌روزرسانی فقط روی ردیف‌هایی می‌نشیند که `readAt IS NULL` دارند، پس اولین لحظه دیدن حفظ می‌شود.
+
+همین شرط در `where` هم مالکیت را اعمال می‌کند: `updateMany({ where: { id, personId, readAt: null } })` یک رفت‌وبرگشت است که هم اجازه را می‌سنجد و هم جواب را می‌دهد، و خواندن-سپس-نوشتن اینجا فقط یک مسابقه بدون فایده بود.

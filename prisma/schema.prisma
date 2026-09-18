@@ -284,6 +284,7 @@ model Season {
   trainingSessions  TrainingSession[]
   tryouts           Tryout[]
   matches           Match[]
+  announcements     Announcement[]
 
   @@index([status])
   @@index([startYear])
@@ -308,7 +309,8 @@ model School {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  enrollments SchoolEnrollment[]
+  enrollments   SchoolEnrollment[]
+  announcements Announcement[]
 
   @@index([sportId, isActive])
 }
@@ -337,6 +339,7 @@ model Team {
   trainingPlans    TrainingPlan[]
   trainingSessions TrainingSession[]
   matches          Match[]
+  announcements    Announcement[]
 
   @@index([sportId, isActive])
   @@index([ageGroupId])
@@ -430,6 +433,8 @@ model Person {
   player   Player?
   guardian Guardian?
   staff    Staff?
+
+  notifications Notification[]
 
   @@index([lastName, firstName])
 }
@@ -1463,4 +1468,131 @@ model PerformanceRecord {
   @@unique([playerId, metric, measuredAt])
   @@index([playerId, metric, measuredAt])
   @@index([measuredAt])
+}
+
+// ---------------------------------------------------------------------------
+// Communication — Phase 15
+//
+//   Announcement ──< Notification >── Person
+//
+// **A notification is addressed to a `Person`, not to a `User`.**
+//
+// That is the whole design, and it came from the rule this phase finally
+// completes. Accepting a trial applicant must tell the family
+// (docs/BUSINESS_RULES.md §3) — and a family that applied to a trial has **no
+// account**. Public registration creates a `Person` for the child and a
+// `Person` for the guardian, with a mobile number and nothing else; the login
+// comes later, if they are accepted. Addressing notifications to `User` would
+// mean the one message the academy most needs to deliver has no recipient.
+//
+// `Person` already said so: "A young player may have no account at all while
+// their guardian does."
+//
+// So a notification waits on the person. Someone with a login reads it in
+// their panel; someone without has it waiting for the day they sign in, and
+// their mobile is on the same row for whenever the club connects a real SMS
+// gateway.
+//
+// There is deliberately **no `channel` column**. A notification is a record of
+// something that happened, not a message on a wire — and delivery already has
+// its own home in `lib/sms`, kept separate since Phase 2. A column with one
+// possible value buys nothing that a migration could not add the day a second
+// one exists (docs/PRODUCT_SPEC.md §10).
+// ---------------------------------------------------------------------------
+
+enum NotificationType {
+  INFO
+  SUCCESS
+  WARNING
+  ALERT
+  TRAINING
+  MATCH
+  ATTENDANCE
+  EVALUATION
+  TRYOUT
+  SYSTEM
+}
+
+model Notification {
+  id String @id @default(cuid())
+
+  /// Who it is for. `Person`, not `User` — see the note above.
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  type NotificationType @default(INFO)
+
+  title String
+  body  String?
+
+  /// Where it points, as a path inside the app (`/dashboard/...`). Relative so
+  /// a stored link can never send a reader to another host.
+  link String?
+
+  /// Null until read. A timestamp rather than a boolean, because "when did
+  /// they see this" is a question that gets asked and a boolean cannot answer.
+  readAt DateTime?
+
+  /// The announcement this was fanned out from, if it came from one. Null for
+  /// the ones the system raises by itself.
+  announcementId String?
+  announcement   Announcement? @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  /// The user whose action caused it. Null when nobody in particular did.
+  actorId String?
+
+  createdAt DateTime @default(now())
+
+  /// The inbox query: one person's notifications, newest first.
+  @@index([personId, createdAt])
+  /// The unread badge, which every signed-in page asks for.
+  @@index([personId, readAt])
+  @@index([announcementId])
+}
+
+/// Draft until someone means it. Publishing is what fans it out, and it
+/// happens once — there is no unpublishing a message people have already read.
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model Announcement {
+  id String @id @default(cuid())
+
+  title String
+  body  String
+
+  type NotificationType @default(INFO)
+
+  /// The audience, narrowest wins. A team announcement reaches that squad and
+  /// their guardians; a school announcement reaches everyone enrolled there
+  /// and theirs; neither set means the whole academy.
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  schoolId String?
+  school   School? @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  /// Pins a team or school audience to one season. Null means the active one
+  /// at the moment of publishing, resolved then and not re-resolved later.
+  seasonId String?
+  season   Season? @relation(fields: [seasonId], references: [id], onDelete: SetNull)
+
+  status      AnnouncementStatus @default(DRAFT)
+  publishedAt DateTime?
+  /// How many people it reached, frozen at publication. Counting the rows back
+  /// later would give a different answer as squads change.
+  recipients  Int                @default(0)
+
+  authorId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications Notification[]
+
+  @@index([status, publishedAt])
+  @@index([teamId])
+  @@index([schoolId])
 }
