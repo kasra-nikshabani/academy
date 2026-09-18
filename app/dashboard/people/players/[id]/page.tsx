@@ -12,6 +12,10 @@ import { getPlayerJourney } from "@/lib/services/journey.service";
 import { getPlayerRegister } from "@/lib/services/attendance.service";
 import { listPlayerEvaluations } from "@/lib/services/evaluation.service";
 import { getPlayerMatchRecord } from "@/lib/services/match.service";
+import {
+  canRecordForPlayer,
+  getPlayerPerformance,
+} from "@/lib/services/performance.service";
 import { OUTCOME_CLASS, OUTCOME_LABEL } from "@/components/matches/match-meta";
 import { matchOutcome } from "@/lib/services/match-result";
 import {
@@ -22,6 +26,8 @@ import {
 import { cn } from "@/lib/utils";
 import { PlayerJourney } from "@/components/players/player-journey";
 import { AttendanceSummary } from "@/components/training/attendance-summary";
+import { PerformancePanel } from "@/components/performance/performance-panel";
+import { MeasurementForm } from "@/components/performance/measurement-form";
 import { hasPermission } from "@/lib/permissions";
 import { formatJalali, toJalali } from "@/lib/utils/date";
 import { toPersianDigits } from "@/lib/utils/number";
@@ -84,6 +90,16 @@ export default async function PlayerPage(props: {
   const matches = hasPermission(caller, "match:read")
     ? await getPlayerMatchRecord(caller, id).catch(() => null)
     : null;
+
+  const performance = hasPermission(caller, "performance:read")
+    ? await getPlayerPerformance(caller, id).catch(() => null)
+    : null;
+
+  // Permission and scope answered separately, both before the form is drawn:
+  // a coach holds `performance:write` for their own squads and not for this
+  // child, and rendering a form that would be refused on submit is worse than
+  // rendering none (docs/PERMISSIONS.md §2).
+  const canRecord = await canRecordForPlayer(caller, id);
 
   return (
     <>
@@ -319,6 +335,58 @@ export default async function PlayerPage(props: {
                 );
               })}
             </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {performance && (performance.trends.length > 0 || canRecord) ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">عملکرد</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            {performance.trends.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                هنوز اندازه‌گیری‌ای برای این بازیکن ثبت نشده است.
+              </p>
+            ) : (
+              <PerformancePanel
+                trends={performance.trends.map((trend) => ({
+                  metric: trend.metric,
+                  points: trend.points.map((point) => ({
+                    value: point.value,
+                    measuredAt: point.measuredAt.toISOString(),
+                  })),
+                  latest: {
+                    value: trend.latest.value,
+                    measuredAt: trend.latest.measuredAt.toISOString(),
+                  },
+                  delta: trend.delta,
+                  improved: trend.improved,
+                  best: trend.best
+                    ? {
+                        value: trend.best.value,
+                        measuredAt: trend.best.measuredAt.toISOString(),
+                      }
+                    : null,
+                }))}
+              />
+            )}
+
+            {canRecord ? (
+              <div className="border-t border-border pt-4">
+                <p className="mb-3 text-sm font-medium">ثبت اندازه‌گیری تازه</p>
+                <MeasurementForm
+                  playerId={id}
+                  lastKnown={Object.fromEntries(
+                    performance.trends.map((trend) => [
+                      trend.metric,
+                      trend.latest.value,
+                    ]),
+                  )}
+                />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
