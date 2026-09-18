@@ -49,6 +49,19 @@ export default async function globalTeardown(): Promise<void> {
     `);
     await client.query(`DELETE FROM "Person" WHERE "lastName" = 'آزمایشی'`);
 
+    // The same rule, for guardians. Fixtures name them «ولی ...» with no
+    // national code; the seed's one guardian has one. Without this sweep they
+    // never went away: 1,294 had collected by Phase 14, and because the seeded
+    // player they attach to is the one every parent test reaches for, his
+    // record had grown fifty-five identical «ولی» rows. The player sweep above
+    // missed them for a reason easy to repeat — it looks in `Player`, and a
+    // guardian is not one.
+    await client.query(`
+      DELETE FROM "Person"
+       WHERE "nationalCode" IS NULL
+         AND id IN (SELECT "personId" FROM "Guardian")
+    `);
+
     // Tryout applicants are the exception to the rule above: the public form
     // requires a national code, so these people *do* have one. Every code a
     // test makes begins `999`, which the seed never uses — see

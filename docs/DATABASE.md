@@ -149,7 +149,7 @@ Prisma Client داخل `lib/generated/prisma` تولید می‌شود و در `
 | Training | TrainingSession, TrainingPlan, TrainingExercise (✅ ۸)، Attendance (✅ ۹) | 8–9 |
 | Talent | Tryout, TryoutApplication, Screening (✅ ۱۰)، EvaluationTemplate, EvaluationCriterion, Evaluation, EvaluationScore (✅ ۱۱) | 10–12 |
 | Competition | Match, MatchLineup, PlayerMatchStat (✅ ۱۳) | 13 |
-| Performance | PerformanceRecord | 14 |
+| Performance | PerformanceRecord (✅ ۱۴) | 14 |
 | Communication | Notification, Announcement | 15 |
 | Documents | Document | 18 |
 | Audit | AuditLog | 19 |
@@ -185,3 +185,21 @@ new Date("2026-09-16T13:02:00Z")
 **قاعده: در Fixture ها همیشه `date.toISOString()` را Bind کنید، نه خود `Date` را.** تابع `utcParam` در `e2e/support/db.ts` همین کار را می‌کند.
 
 این تله از Phase 5 وجود داشت و تا Phase 9 هیچ تستی آن را نگرفت، چون هیچ تستی به ساعتِ دقیق یک تاریخ حساس نبود. اولین چیزی که آن را آشکار کرد، قاعده «حضور و غیاب برای جلسه‌ای که شروع نشده ثبت نمی‌شود» بود.
+
+## 10. چرا `PerformanceRecord` ستون واحد و دسته ندارد
+
+جدول فقط `metric`، `value` و `measuredAt` دارد. واحد («ثانیه»)، دسته («سرعت»)، بازه قابل‌قبول، دقت اعشار و جهت پیشرفت هیچ‌کدام ستون نیستند.
+
+اینها ویژگی **سنجه** هستند، نه ویژگی اندازه‌گیری. یک نسخه در هر ردیف یعنی نسخه‌هایی که می‌توانند با هم اختلاف پیدا کنند — و آن‌وقت دو ردیف «دوی ۲۰ متر» با دو واحد متفاوت در یک نمودار می‌نشینند. کاتالوگ کد (`lib/services/performance-metrics.ts`) تنها جای این دانش است، دقیقاً مثل کاتالوگ مجوزها.
+
+نتیجه عملی: افزودن سنجه تازه یعنی یک مقدار `enum` و یک سطر کاتالوگ — نه یک ستون تازه و نه Migration ی که ردیف‌های قدیمی را بازنویسی کند.
+
+### چرا اینجا کلید یکتا هست ولی در `TrainingSession` نبود
+
+`@@unique([playerId, metric, measuredAt])`.
+
+جلسه تمرین استثنا داشت — جلسه لغوشده جای خود را آزاد می‌کند — و قاعده‌ای با استثنا کلید یکتا نیست (§۹). اندازه‌گیری استثنا ندارد: یک سنجه در یک روز یک مقدار دارد. پس دیتابیس نگهش می‌دارد، و `upsert` روی همین کلید است که «اصلاح» را ممکن می‌کند.
+
+### چرا `measuredAt` نیمه‌شب تهران است
+
+اندازه‌گیری به جلسه‌ای تعلق دارد که در آن گرفته شده، و نتایج معمولاً چند روز بعد تایپ می‌شوند. روندی که روی زمان ورود داده کشیده شود، روند کاغذبازی مربی است نه روند بازیکن.

@@ -4,8 +4,9 @@ import { PrismaClient } from "../lib/generated/prisma/client";
 import { PERMISSIONS, splitPermission } from "../lib/permissions/catalogue";
 import type { Permission } from "../lib/permissions/catalogue";
 import { ROLE_DEFINITIONS } from "../lib/permissions/roles";
-import { addDays, startOfWeek } from "../lib/utils/date";
-import type { RoleKey } from "../lib/generated/prisma/enums";
+import { roundToMetric } from "../lib/services/performance-metrics";
+import { addDays, startOfDay, startOfWeek } from "../lib/utils/date";
+import type { PerformanceMetric, RoleKey } from "../lib/generated/prisma/enums";
 
 /**
  * Development seed.
@@ -1307,6 +1308,77 @@ async function main(): Promise<void> {
     }
 
     console.info(`  \u2713 ${matchCount} matches`);
+
+    // --- performance measurements -----------------------------------------
+    //
+    // Four testing days across the term for the U14 squad, so the trend chart
+    // on a player's record has an actual line to draw rather than a single
+    // point. The numbers move the way a fourteen-year-old's do over three
+    // months: a little taller and heavier, a little quicker, further on the
+    // Cooper — and the sprint **falls** as it improves, which is the whole
+    // reason the metric catalogue carries a direction.
+    //
+    // Idempotent by the unique key: re-seeding corrects the same four days
+    // rather than stacking a fifth reading onto each of them.
+    const testingDays = [-84, -56, -28, -3];
+
+    const performanceSeeds: Array<{
+      metric: PerformanceMetric;
+      /** Reading on the first testing day, then the change per session. */
+      start: number;
+      step: number;
+      /** The second seeded player starts from a slightly different place. */
+      offset: number;
+    }> = [
+      { metric: "HEIGHT_CM", start: 162, step: 1.5, offset: 4 },
+      { metric: "WEIGHT_KG", start: 51.5, step: 0.8, offset: 3 },
+      // Lower is faster. The one series on the page that improves downward.
+      { metric: "SPRINT_20M_S", start: 3.28, step: -0.04, offset: 0.09 },
+      { metric: "AGILITY_505_S", start: 2.64, step: -0.03, offset: 0.07 },
+      { metric: "VERTICAL_JUMP_CM", start: 38, step: 1.2, offset: -2 },
+      { metric: "COOPER_TEST_M", start: 2180, step: 65, offset: -90 },
+    ];
+
+    const measuredSquad = await prisma.teamMembership.findMany({
+      where: { teamId: u14.id, status: "ACTIVE", leftAt: null },
+      select: { playerId: true },
+      orderBy: { createdAt: "asc" },
+      take: 2,
+    });
+
+    let measurementCount = 0;
+
+    for (const [playerIndex, member] of measuredSquad.entries()) {
+      for (const [dayIndex, offsetDays] of testingDays.entries()) {
+        const measuredAt = startOfDay(addDays(now, offsetDays));
+
+        for (const seed of performanceSeeds) {
+          const raw =
+            seed.start + seed.step * dayIndex + seed.offset * playerIndex;
+          const value = roundToMetric(seed.metric, raw);
+
+          await prisma.performanceRecord.upsert({
+            where: {
+              playerId_metric_measuredAt: {
+                playerId: member.playerId,
+                metric: seed.metric,
+                measuredAt,
+              },
+            },
+            create: {
+              playerId: member.playerId,
+              metric: seed.metric,
+              value,
+              measuredAt,
+            },
+            update: { value },
+          });
+          measurementCount += 1;
+        }
+      }
+    }
+
+    console.info(`  \u2713 ${measurementCount} performance measurements`);
 
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
