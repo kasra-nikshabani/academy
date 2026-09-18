@@ -21,7 +21,7 @@
 | 12 | Talent Pipeline | ✅ تکمیل |
 | 13 | Matches | ✅ تکمیل |
 | 14 | Performance | ⏳ بعدی |
-| 15 | Notifications | ⛔ |
+| 15 | Notifications | ✅ |
 | 16 | Dashboards | ⛔ |
 | 17 | Reports | ⛔ |
 | 18 | Documents | ⛔ |
@@ -243,6 +243,16 @@
 **قواعد:** `docs/BUSINESS_RULES.md` §۱۹ · **تصمیم‌ها:** `docs/ARCHITECTURE.md` §۶.۱۴ · **پالت:** `docs/UI_UX.md` §۱۰
 
 **سه یافته:** پالت Placeholder فاز ۱ چهار بررسی را رد کرد — طلای نشان روی کارت کنتراست ۱.۵۲:۱ داشت · شش سنجه در برابر پنج اسلات رنگ، دو سنجه را هم‌رنگ کرده بود · جاروی افراد در Teardown ولی‌های Fixture را نمی‌دید و ۱۲۹۴ تا جمع شده بود.
+
+## Phase 15 — Notifications ✅
+
+`Notification` و `Announcement`.
+
+**تحویل شد:** مدل و Migration سیزدهم · اعلان به **شخص** نه کاربر · صندوق اعلان با Badge روی هر صفحه · اطلاعیه با پیش‌نویس/انتشار و Fan-out داخل Transaction · شش مسیر API · **مرحله چهارم Transaction پذیرش استعدادیابی** که از Phase 10 بدهی بود · مجوز `notification:send` برای مربی · Seed با یک اطلاعیه منتشرشده و یک پیش‌نویس.
+
+**قواعد:** `docs/BUSINESS_RULES.md` §۳ و §۲۰ · **تصمیم‌ها:** `docs/ARCHITECTURE.md` §۶.۱۵
+
+**سه یافته:** قاعده مخاطب فقط هنگام ساخت بررسی می‌شد، پس مربی می‌توانست پیش‌نویس سراسری مدیر را منتشر کند · تست «خواندن همه» اعلان Seed را هم خوانده می‌کرد و Badge از اجرای دوم خالی می‌ماند · همان تله چندجمله‌ای pg، این بار در `update ... select` داخل Transaction.
 
 ## فازهای ۴ تا ۲۲
 

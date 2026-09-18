@@ -3,6 +3,7 @@ import { hashOtpCode } from "../lib/auth/otp";
 import { signInAs, uniqueMobile } from "./support/sign-in";
 import {
   createTryout,
+  countNotificationsForPlayer,
   findApplicationByTrackingCode,
   plantCodeHash,
   testNationalCode,
@@ -201,6 +202,16 @@ test.describe("screening and the acceptance transaction", () => {
       )
     ).json();
     expect(journey.data[0].type).toBe("TRYOUT_ACCEPTED");
+
+    // The fourth step, added in Phase 15 and owed since Phase 10: the family
+    // is told, inside the same transaction.
+    //
+    // Checked against the database, not an inbox page, because this family has
+    // no account — which is the whole reason notifications are addressed to a
+    // `Person` rather than a `User` (docs/BUSINESS_RULES.md §3).
+    expect(
+      await countNotificationsForPlayer(application!.playerId),
+    ).toBeGreaterThan(0);
 
     await adminContext.close();
   });

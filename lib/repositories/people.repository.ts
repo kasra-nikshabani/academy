@@ -39,6 +39,23 @@ export async function findStaffIdForUser(
   return staff?.id ?? null;
 }
 
+/**
+ * The `Person` behind a login, if there is one.
+ *
+ * Not every user has one — an administrator account created for the system has
+ * no person record — and not every person has a user. This is the join that
+ * turns a signed-in caller into the inbox they own.
+ */
+export async function findPersonIdForUser(
+  userId: string,
+): Promise<string | null> {
+  const person = await prisma.person.findUnique({
+    where: { userId },
+    select: { id: true },
+  });
+  return person?.id ?? null;
+}
+
 /** Players a guardian is joined to, plus the caller's own player record. */
 export async function findPlayerIdsForUser(userId: string): Promise<string[]> {
   const [children, own] = await prisma.$transaction([
