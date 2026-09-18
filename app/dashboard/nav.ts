@@ -80,6 +80,17 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     });
   }
 
+  // Performance sits beside matches rather than under players: the coach's
+  // question is "where is my squad", and the per-player chart is reached from
+  // the player's own record.
+  if (hasPermission(user, "performance:read")) {
+    items.push({
+      href: "/dashboard/performance",
+      label: "عملکرد",
+      icon: "performance",
+    });
+  }
+
   if (hasPermission(user, "evaluation:read")) {
     items.push({
       href: "/dashboard/evaluations",

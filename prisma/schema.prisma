@@ -467,6 +467,7 @@ model Player {
   evaluations        Evaluation[]
   matchLineups       MatchLineup[]
   matchStats         PlayerMatchStat[]
+  performanceRecords PerformanceRecord[]
 
   @@index([status])
 }
@@ -831,8 +832,9 @@ model TrainingSession {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  attendance  Attendance[]
-  evaluations Evaluation[]
+  attendance         Attendance[]
+  evaluations        Evaluation[]
+  performanceRecords PerformanceRecord[]
 
   /// There is deliberately **no** unique key on `teamId + startsAt`.
   ///
@@ -1380,4 +1382,85 @@ model PlayerMatchStat {
   /// One line per player per match (CLAUDE.md §9).
   @@unique([matchId, playerId])
   @@index([playerId, recordedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Performance — Phase 14
+//
+//   Player ──< PerformanceRecord   (one measurement: a metric, a value, a day)
+//
+// **A fixed set of metrics, not a configurable one.** The evaluation engine is
+// deliberately configurable — a coach's judgement of "first touch" is an
+// opinion, and a club may weigh opinions however it likes. A measurement is
+// not an opinion. A trend line only means anything when every point on it was
+// produced by the same test, in the same unit, the same way; two clubs' custom
+// "speed" metrics cannot be drawn on one axis, and neither can two seasons' of
+// one club's (docs/BUSINESS_RULES.md §19).
+//
+// So the metric list lives in an enum, and everything a metric *knows about
+// itself* — its Persian label, its unit, its plausible range, how many
+// decimals it is read to, and **which direction counts as improvement** —
+// lives in one code catalogue, `lib/services/performance-metrics.ts`. That
+// catalogue is the reason there is no `unit` or `category` column here: they
+// are properties of the metric, not of the measurement, and a copy per row is
+// a copy that can disagree with itself.
+// ---------------------------------------------------------------------------
+
+/// The tests the academy records. Adding one is an enum value plus a line in
+/// the catalogue — never a new column.
+enum PerformanceMetric {
+  /// Height in centimetres.
+  HEIGHT_CM
+  /// Weight in kilograms.
+  WEIGHT_KG
+  /// Flying 20-metre sprint, in seconds. Lower is better.
+  SPRINT_20M_S
+  /// 5-0-5 change-of-direction test, in seconds. Lower is better.
+  AGILITY_505_S
+  /// Countermovement vertical jump, in centimetres.
+  VERTICAL_JUMP_CM
+  /// Twelve-minute Cooper test, in metres.
+  COOPER_TEST_M
+}
+
+model PerformanceRecord {
+  id String @id @default(cuid())
+
+  playerId String
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  metric PerformanceMetric
+
+  /// Float because half a centimetre and a hundredth of a second are both real
+  /// answers. What counts as a sane value is the catalogue's business, checked
+  /// on the way in — a 20-metre sprint of 45 seconds and a Cooper test of four
+  /// metres are each impossible, and one global range cannot say so.
+  value Float
+
+  /// **Midnight in Tehran on the day of the test**, not the moment the row was
+  /// typed. A measurement belongs to the session it was taken at, which is
+  /// often entered days later, and a trend drawn against data-entry time is a
+  /// trend of the coach's paperwork.
+  measuredAt DateTime
+
+  /// The session it was taken at, when it was taken at one. Optional: a growth
+  /// check at the start of a term answers to the calendar, not to a session.
+  trainingSessionId String?
+  trainingSession   TrainingSession? @relation(fields: [trainingSessionId], references: [id], onDelete: SetNull)
+
+  notes String?
+
+  recordedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// **One value per metric per player per day.** Unlike the training clash,
+  /// this rule has no exception to express, so it is a real unique key and the
+  /// database keeps it. Re-submitting the same day corrects the reading rather
+  /// than appending a second one — two different Cooper results dated the same
+  /// afternoon do not make a trend, they make it unreadable.
+  @@unique([playerId, metric, measuredAt])
+  @@index([playerId, metric, measuredAt])
+  @@index([measuredAt])
 }

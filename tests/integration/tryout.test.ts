@@ -57,9 +57,26 @@ function eligibleBirthDate(): Date {
 async function track(nationalCodeUsed: string): Promise<void> {
   const person = await prisma.person.findUnique({
     where: { nationalCode: nationalCodeUsed },
-    select: { id: true },
+    select: {
+      id: true,
+      // The applicant's guardian is a second `Person` the registration
+      // creates, and it has no national code — so a cleanup that looks the
+      // applicant up by code never sees it. Left behind, they accumulate: 26
+      // per `pnpm verify`, and they land on the seeded player every parent
+      // test reaches for.
+      player: {
+        select: {
+          guardians: { select: { guardian: { select: { personId: true } } } },
+        },
+      },
+    },
   });
-  if (person) createdPersonIds.push(person.id);
+  if (!person) return;
+
+  createdPersonIds.push(person.id);
+  for (const link of person.player?.guardians ?? []) {
+    createdPersonIds.push(link.guardian.personId);
+  }
 }
 
 beforeAll(async () => {
@@ -210,6 +227,21 @@ describe("public registration", () => {
         playerId: seededPlayer.id,
         type: "TRYOUT_REGISTERED",
         description: { contains: trackingCode },
+      },
+    });
+
+    // And the guardian the registration attached to him.
+    //
+    // This test deliberately creates no applicant — reusing the existing
+    // player is the whole point — so the national-code cleanup has nothing to
+    // catch, and the guardian stayed. It attaches to a **seeded** player, so
+    // every run added one more «ولی» to the record every parent test opens.
+    await prisma.person.deleteMany({
+      where: {
+        nationalCode: null,
+        guardian: {
+          is: { players: { some: { playerId: seededPlayer.id } } },
+        },
       },
     });
   });

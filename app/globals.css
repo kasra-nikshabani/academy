@@ -41,6 +41,7 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-chart-6: var(--chart-6);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -132,13 +133,31 @@
   --input: oklch(0.905 0.006 85);
   --ring: oklch(0.78 0.168 88);
 
-  /* charts — placeholder scale anchored on the brand gold; the real
-       categorical/sequential palette is designed in the charting phase */
-  --chart-1: oklch(0.862 0.176 91.5);
-  --chart-2: oklch(0.55 0.1 240);
-  --chart-3: oklch(0.45 0.02 67);
-  --chart-4: oklch(0.68 0.12 40);
-  --chart-5: oklch(0.6 0.08 160);
+  /* charts — validated in Phase 14, replacing the Phase 1 placeholder.
+       Slot order is fixed and is the colour-blindness safety mechanism: hues
+       are assigned 1, 2, 3… in sequence and never cycled or reordered.
+
+       The crest gold itself is **not** slot 1. Measured against a card it
+       reaches 1.52:1 — a gold line on white is very nearly invisible, the same
+       defect the outline button had in Phase 10. Slot 1 is the deeper gold
+       that carries the identity and can actually be seen; the crest gold stays
+       where it works, as a fill behind dark text.
+
+       Checked, not eyeballed: lightness band, chroma floor, protan/deutan
+       separation and contrast all pass on a card in both modes. The one caveat
+       is slot 1 on the page background rather than a card — 2.94:1 against
+       3:1 — so charts sit in cards, and any that does not carries direct
+       labels. See docs/UI_UX.md §9. */
+  --chart-1: oklch(0.67 0.143 73.2);
+  --chart-2: oklch(0.575 0.163 255.5);
+  --chart-3: oklch(0.623 0.191 24.9);
+  --chart-4: oklch(0.433 0.167 283.6);
+  --chart-5: oklch(0.529 0.18 142.5);
+  /* A sixth slot, because the performance module has six metrics. Without it
+     the sixth fell back to the first and قد and تست کوپر wore the same
+     swatch — caught on the rendered page, then locked down by a test that
+     asserts every metric gets a colour of its own. */
+  --chart-6: oklch(0.622 0.171 0.8);
 
   --radius: 0.625rem;
 
@@ -192,11 +211,15 @@
   --input: oklch(1 0 0 / 16%);
   --ring: oklch(0.87 0.176 92);
 
-  --chart-1: oklch(0.87 0.176 92);
-  --chart-2: oklch(0.65 0.1 240);
-  --chart-3: oklch(0.75 0.02 78);
-  --chart-4: oklch(0.72 0.12 40);
-  --chart-5: oklch(0.68 0.08 160);
+  /* the same five hues, re-stepped for the dark surface — not an automatic
+     flip of the light values. Slot 1 is the one step that serves both bands,
+     which is why the gold is the same hex in either mode. */
+  --chart-1: oklch(0.67 0.143 73.2);
+  --chart-2: oklch(0.622 0.161 255.1);
+  --chart-3: oklch(0.669 0.159 22.3);
+  --chart-4: oklch(0.67 0.145 286.8);
+  --chart-5: oklch(0.529 0.18 142.5);
+  --chart-6: oklch(0.622 0.171 0.8);
 
   --sidebar: oklch(0.145 0.011 67);
   --sidebar-foreground: oklch(0.95 0.004 90);

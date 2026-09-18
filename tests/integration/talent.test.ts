@@ -37,7 +37,9 @@ const createdEvaluationIds: string[] = [];
 let codeSequence = 0;
 function nationalCode(): string {
   codeSequence += 1;
-  const nine = String(700000000 + codeSequence + (process.pid % 10000) * 100).slice(0, 9);
+  const nine = String(
+    700000000 + codeSequence + (process.pid % 10000) * 100,
+  ).slice(0, 9);
   const sum = [...nine].reduce(
     (total, digit, index) => total + Number(digit) * (10 - index),
     0,
@@ -74,9 +76,24 @@ async function applicant(): Promise<{
 
   const person = await prisma.person.findUniqueOrThrow({
     where: { nationalCode: code },
-    select: { id: true },
+    select: {
+      id: true,
+      // The applicant's guardian is a second `Person` the registration
+      // creates, and it has no national code — so a cleanup that looks the
+      // applicant up by code never sees it. Left behind, they accumulate: 26
+      // per `pnpm verify`, and they land on the seeded player every parent
+      // test reaches for.
+      player: {
+        select: {
+          guardians: { select: { guardian: { select: { personId: true } } } },
+        },
+      },
+    },
   });
   createdPersonIds.push(person.id);
+  for (const link of person.player?.guardians ?? []) {
+    createdPersonIds.push(link.guardian.personId);
+  }
 
   const application = await prisma.tryoutApplication.findUniqueOrThrow({
     where: { trackingCode: result.trackingCode },
@@ -172,7 +189,9 @@ describe("the three queues", () => {
   it("leaves the evaluator queue the moment an evaluation is assigned", async () => {
     const { applicationId, playerId } = await applicant();
 
-    await tryouts.recordScreening(manager, applicationId, { status: "APPROVED" });
+    await tryouts.recordScreening(manager, applicationId, {
+      status: "APPROVED",
+    });
     const evaluation = await evaluations.requestEvaluation(manager, {
       playerId,
       templateId,
@@ -196,7 +215,9 @@ describe("the three queues", () => {
   it("reaches the decision queue once an evaluation is submitted", async () => {
     const { applicationId, playerId } = await applicant();
 
-    await tryouts.recordScreening(manager, applicationId, { status: "APPROVED" });
+    await tryouts.recordScreening(manager, applicationId, {
+      status: "APPROVED",
+    });
     const evaluation = await evaluations.requestEvaluation(manager, {
       playerId,
       templateId,
@@ -237,7 +258,9 @@ describe("the three queues", () => {
   it("drops out of every queue once decided", async () => {
     const { applicationId } = await applicant();
 
-    await tryouts.recordScreening(manager, applicationId, { status: "APPROVED" });
+    await tryouts.recordScreening(manager, applicationId, {
+      status: "APPROVED",
+    });
     await tryouts.decideApplication(admin, applicationId, {
       decision: "ACCEPTED",
       teamId: u14TeamId,
@@ -285,7 +308,9 @@ describe("the funnel", () => {
     const before = await talent.getTalentPipeline(manager, { tryoutId });
 
     const { applicationId } = await applicant();
-    await tryouts.recordScreening(manager, applicationId, { status: "APPROVED" });
+    await tryouts.recordScreening(manager, applicationId, {
+      status: "APPROVED",
+    });
     await tryouts.decideApplication(admin, applicationId, {
       decision: "ACCEPTED",
       teamId: u14TeamId,
@@ -333,13 +358,13 @@ describe("the funnel", () => {
 
 describe("who may read the pipeline", () => {
   it("refuses a coach, who holds no tryout permission", async () => {
-    await expect(
-      talent.getTalentPipeline(coach, {}),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(talent.getTalentPipeline(coach, {})).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
 
-    await expect(
-      talent.getPipelineQueues(coach, {}),
-    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(talent.getPipelineQueues(coach, {})).rejects.toMatchObject({
+      code: "FORBIDDEN",
+    });
   });
 
   it("allows the academy manager", async () => {
