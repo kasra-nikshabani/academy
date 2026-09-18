@@ -681,7 +681,12 @@ export async function assignEvaluation(params: {
          ("id","playerId","templateId","evaluatorId","applicationId","status","createdAt","updatedAt")
        VALUES (gen_random_uuid()::text, $1, $2, $3, $4, 'DRAFT', now(), now())
        RETURNING id`,
-      [params.playerId, templateId, params.evaluatorStaffId, params.applicationId ?? null],
+      [
+        params.playerId,
+        templateId,
+        params.evaluatorStaffId,
+        params.applicationId ?? null,
+      ],
     );
 
     const { rows: criteria } = await client.query<{
@@ -694,5 +699,34 @@ export async function assignEvaluation(params: {
     );
 
     return { id: rows[0]!.id, criteria };
+  });
+}
+
+/**
+ * The notifications waiting for a player and their guardians.
+ *
+ * Reads the database rather than the API on purpose: the point of the
+ * acceptance test is that the family is told, and a trial family has **no
+ * account** to sign in with and read an inbox. Checking through the API would
+ * only be able to test the case that is not the interesting one.
+ */
+export async function countNotificationsForPlayer(
+  playerId: string,
+): Promise<number> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ count: string }>(
+      `SELECT count(*)::text AS count
+         FROM "Notification" n
+        WHERE n."personId" IN (
+          SELECT p."personId" FROM "Player" p WHERE p.id = $1
+          UNION
+          SELECT g."personId"
+            FROM "PlayerGuardian" pg
+            JOIN "Guardian" g ON g.id = pg."guardianId"
+           WHERE pg."playerId" = $1
+        )`,
+      [playerId],
+    );
+    return Number(rows[0]?.count ?? 0);
   });
 }

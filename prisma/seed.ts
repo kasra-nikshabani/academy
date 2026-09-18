@@ -1380,6 +1380,109 @@ async function main(): Promise<void> {
 
     console.info(`  \u2713 ${measurementCount} performance measurements`);
 
+    // --- announcements and notifications ----------------------------------
+    //
+    // One published announcement so the inbox is not empty on a fresh
+    // database, and one draft so the publish button has something to act on.
+    //
+    // The published one is fanned out the way the service does it, by hand:
+    // the seed writes through Prisma rather than through services everywhere
+    // else, and making this the one exception would hide what the service
+    // actually does.
+    const announcementSeeds = [
+      {
+        key: "u14-training-moved",
+        title: "جابه‌جایی تمرین پنجشنبه",
+        body: "تمرین پنجشنبه این هفته به ساعت ۱۷:۰۰ منتقل شد. لطفاً ۱۵ دقیقه زودتر در زمین حاضر باشید.",
+        type: "TRAINING" as const,
+        teamId: u14.id,
+        publish: true,
+      },
+      {
+        key: "season-photos",
+        title: "عکس‌برداری رسمی فصل",
+        body: "هفته آینده عکس‌برداری رسمی تیم‌ها انجام می‌شود؛ تاریخ دقیق متعاقباً اعلام می‌گردد.",
+        type: "INFO" as const,
+        teamId: null,
+        publish: false,
+      },
+    ];
+
+    let announcementCount = 0;
+    let notificationCount = 0;
+
+    for (const item of announcementSeeds) {
+      const existing = await prisma.announcement.findFirst({
+        where: { title: item.title },
+        select: { id: true },
+      });
+      if (existing) {
+        announcementCount += 1;
+        continue;
+      }
+
+      const announcement = await prisma.announcement.create({
+        data: {
+          title: item.title,
+          body: item.body,
+          type: item.type,
+          teamId: item.teamId,
+          ...(item.publish
+            ? { status: "PUBLISHED" as const, publishedAt: new Date() }
+            : {}),
+        },
+      });
+      announcementCount += 1;
+
+      if (!item.publish || !item.teamId) continue;
+
+      // The squad and their guardians — the audience the service resolves.
+      const squadRows = await prisma.teamMembership.findMany({
+        where: { teamId: item.teamId, status: "ACTIVE", leftAt: null },
+        select: { playerId: true },
+      });
+      const squadPlayerIds = squadRows.map((row) => row.playerId);
+
+      const [playerPeople, guardianLinks] = await Promise.all([
+        prisma.player.findMany({
+          where: { id: { in: squadPlayerIds } },
+          select: { personId: true },
+        }),
+        prisma.playerGuardian.findMany({
+          where: { playerId: { in: squadPlayerIds } },
+          select: { guardian: { select: { personId: true } } },
+        }),
+      ]);
+
+      const personIds = [
+        ...new Set([
+          ...playerPeople.map((row) => row.personId),
+          ...guardianLinks.map((row) => row.guardian.personId),
+        ]),
+      ];
+
+      const { count } = await prisma.notification.createMany({
+        data: personIds.map((personId) => ({
+          personId,
+          type: item.type,
+          title: item.title,
+          body: item.body,
+          link: "/dashboard/notifications",
+          announcementId: announcement.id,
+        })),
+      });
+
+      await prisma.announcement.update({
+        where: { id: announcement.id },
+        data: { recipients: count },
+      });
+      notificationCount += count;
+    }
+
+    console.info(
+      `  \u2713 ${announcementCount} announcements (${notificationCount} notifications)`,
+    );
+
     console.info(
       "\nSign in at /login — the code is printed by the dev server.\n",
     );

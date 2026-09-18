@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { findRoleDefinition } from "@/lib/permissions/roles";
+import { myUnreadCount } from "@/lib/services/notification.service";
 import { navItemsFor } from "./nav";
 
 /**
@@ -20,10 +21,16 @@ export default async function DashboardLayout({
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
+  // One indexed `count` per navigation. A caller with no person record — a
+  // bare administrator account — gets zero rather than an error, so a missing
+  // inbox never takes the whole shell down.
+  const unreadCount = await myUnreadCount(user);
+
   return (
     <AppShell
       navItems={navItemsFor(user)}
       roleNames={user.roles.map((key) => findRoleDefinition(key).name)}
+      unreadCount={unreadCount}
     >
       {children}
     </AppShell>
