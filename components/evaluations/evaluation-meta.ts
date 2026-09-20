@@ -1,17 +1,21 @@
 import type {
   EvaluationDimension,
   EvaluationRecommendation,
-  EvaluationStatus,
 } from "@/lib/generated/prisma/enums";
 
-/** How the evaluation engine reads in Persian. Presentation, not contract. */
+/**
+ * The Persian words themselves live in `@/lib/labels` — the same word
+ * appears on a badge, in an exported CSV and in a notification body, so it
+ * is domain vocabulary rather than a design decision. The colour maps below
+ * genuinely are presentation, and stay here.
+ */
+export {
+  DIMENSION_LABEL,
+  EVALUATION_STATUS_LABEL,
+  RECOMMENDATION_LABEL,
+} from "@/lib/labels";
 
-export const DIMENSION_LABEL: Record<EvaluationDimension, string> = {
-  TECHNICAL: "فنی",
-  PHYSICAL: "بدنی",
-  MENTAL: "ذهنی",
-  OVERALL: "کلی",
-};
+/** How the evaluation engine reads in Persian. Presentation, not contract. */
 
 /** The order CLAUDE.md §14 lists them in, which is how the club reads them. */
 export const DIMENSION_ORDER = [
@@ -20,18 +24,6 @@ export const DIMENSION_ORDER = [
   "MENTAL",
   "OVERALL",
 ] as const satisfies readonly EvaluationDimension[];
-
-export const EVALUATION_STATUS_LABEL: Record<EvaluationStatus, string> = {
-  DRAFT: "در انتظار تکمیل",
-  SUBMITTED: "ثبت نهایی شد",
-};
-
-export const RECOMMENDATION_LABEL: Record<EvaluationRecommendation, string> = {
-  ACCEPT: "پیشنهاد پذیرش",
-  WAITLIST: "فهرست انتظار",
-  REJECT: "پیشنهاد عدم پذیرش",
-  MORE_OBSERVATION: "نیاز به مشاهده بیشتر",
-};
 
 export const RECOMMENDATION_CLASS: Record<EvaluationRecommendation, string> = {
   ACCEPT: "bg-success text-success-foreground",

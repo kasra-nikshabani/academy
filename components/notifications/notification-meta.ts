@@ -1,19 +1,14 @@
 import type { NotificationType } from "@/lib/generated/prisma/enums";
 
-/** Presentation-only: what each kind of notification looks like. */
+/**
+ * The Persian words themselves live in `@/lib/labels` — the same word
+ * appears on a badge, in an exported CSV and in a notification body, so it
+ * is domain vocabulary rather than a design decision. The colour maps below
+ * genuinely are presentation, and stay here.
+ */
+export { NOTIFICATION_LABEL } from "@/lib/labels";
 
-export const NOTIFICATION_LABEL: Record<NotificationType, string> = {
-  INFO: "اطلاع",
-  SUCCESS: "موفقیت",
-  WARNING: "هشدار",
-  ALERT: "مهم",
-  TRAINING: "تمرین",
-  MATCH: "مسابقه",
-  ATTENDANCE: "حضور و غیاب",
-  EVALUATION: "ارزیابی",
-  TRYOUT: "استعدادیابی",
-  SYSTEM: "سامانه",
-};
+/** Presentation-only: what each kind of notification looks like. */
 
 /**
  * The tone each kind carries.
