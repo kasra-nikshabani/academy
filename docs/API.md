@@ -567,6 +567,30 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 `format=csv` پاسخ را با `text/csv; charset=utf-8`، یک `Content-Disposition: attachment` و `Cache-Control: no-store` برمی‌گرداند. فایل با BOM شروع می‌شود و ارقامش لاتین است (`docs/BUSINESS_RULES.md` §۲۲).
 
+### مدارک
+
+| مسیر | متد | محافظ |
+|---|---|---|
+| `/api/v1/documents` | `POST` | `document:write` + Scope |
+| `/api/v1/documents/:id` | `GET` | `document:read` + Scope + نوع سند |
+| `/api/v1/documents/:id` | `DELETE` | `document:write` + Scope — بایگانی می‌کند |
+| `/api/v1/players/:id/documents` | `GET` | `document:read` + Scope بازیکن |
+
+**بارگذاری `multipart/form-data` است** — تنها درخواستی در سامانه که بایت حمل می‌کند. فیلدهای متادیتا مثل همه‌جا با Zod سنجیده می‌شوند؛ خودِ فایل با **محتوایش** سنجیده می‌شود، چون نوع اعلام‌شده و نام فایل هر دو انتخاب آپلودکننده‌اند (`docs/SECURITY.md`).
+
+| فیلد | معنا |
+|---|---|
+| `file` | فایل. JPEG، PNG، WebP یا PDF — حداکثر ۸ مگابایت |
+| `personId` | صاحب سند |
+| `type` | `ID_DOCUMENT` · `BIRTH_CERTIFICATE` · `CONTRACT` · `MEDICAL` · `PARENT_CONSENT` · `PHOTO` · `OTHER` |
+| `title` / `notes` | اختیاری |
+
+فایلی که امضای بایتی‌اش با هیچ‌کدام از چهار نوع مجاز نخواند `422` می‌گیرد — حتی اگر خودش را `image/png` معرفی کند.
+
+`GET` روی یک سند، **خودِ بایت‌ها** را برمی‌گرداند با `X-Content-Type-Options: nosniff` و `Cache-Control: private, no-store`. تصویر `inline` و PDF همیشه `attachment` است.
+
+`DELETE` بایگانی می‌کند؛ ردیف و فایل می‌مانند. بار دوم `409`.
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |

@@ -24,7 +24,7 @@
 | 15 | Notifications | ✅ |
 | 16 | Dashboards | ✅ |
 | 17 | Reports | ✅ |
-| 18 | Documents | ⛔ |
+| 18 | Documents | ✅ |
 | 19 | Audit & Security | ⛔ |
 | 20 | Performance Optimization | ⛔ |
 | 21 | E2E Testing | ⛔ |
@@ -273,6 +273,18 @@
 **قواعد:** `docs/BUSINESS_RULES.md` §۲۲ · **امنیت:** `docs/SECURITY.md` · **تصمیم‌ها:** `docs/ARCHITECTURE.md` §۶.۱۷
 
 **بدون وابستگی تازه.** اکسل خودش CSV را باز می‌کند؛ کتابخانه `xlsx` هزینه‌ای بدون سود بود.
+
+## Phase 18 — Documents ✅
+
+`Document` + Provider محلی پشت `lib/storage` (که رابطش از فاز ۰ ثابت بود).
+
+**تحویل شد:** مدل و Migration چهاردهم · تشخیص نوع فایل از امضای بایت‌ها · کلید ذخیره‌سازی ساخته‌شده و اعتبارسنجی‌شده · Provider محلی با دو بررسی پیش از فایل‌سیستم · بخش مدارک روی پرونده بازیکن با فرم بارگذاری · چهار مسیر API · بایگانی به‌جای حذف · پاکسازی فایل‌ها در Teardown.
+
+**قواعد:** `docs/BUSINESS_RULES.md` §۲۳ · **امنیت:** `docs/SECURITY.md` · **تصمیم‌ها:** `docs/ARCHITECTURE.md` §۶.۱۸
+
+**سه یافته:** الگوی کلید `.exe` را می‌پذیرفت · ثابت `MAX_UPLOAD_BYTES` از Client Component، Prisma را به Bundle مرورگر می‌کشید · آبشار `Person` فایل‌ها را روی دیسک یتیم می‌گذاشت.
+
+**بدون وابستگی تازه.**
 
 ## فازهای ۴ تا ۲۲
 

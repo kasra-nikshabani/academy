@@ -1,3 +1,5 @@
+import { unlink } from "node:fs/promises";
+import { resolve } from "node:path";
 import { Client } from "pg";
 
 /**
@@ -21,6 +23,27 @@ export default async function globalTeardown(): Promise<void> {
   await client.connect();
 
   try {
+    // 0a. Uploaded files, before the rows that point at them.
+    //
+    // `Document` cascades from `Person`, so deleting a fixture person removes
+    // the row and leaves the file on disk for ever — five per run, and nothing
+    // afterwards knows the key. The keys are collected here while the rows
+    // still exist, and the files are unlinked once the sweep below has run.
+    //
+    // (The same orphan is possible in production, where people are not hard
+    // deleted — see docs/ARCHITECTURE.md §6.18.)
+    const { rows: fixtureFiles } = await client.query<{ storageKey: string }>(`
+      SELECT d."storageKey"
+        FROM "Document" d
+        JOIN "Person" p ON p.id = d."personId"
+       WHERE p."lastName" = 'آزمایشی'
+          OR p."nationalCode" LIKE '999%'
+          OR (p."nationalCode" IS NULL
+              AND p.id IN (SELECT "personId" FROM "Player"))
+          OR (p."nationalCode" IS NULL
+              AND p.id IN (SELECT "personId" FROM "Guardian"))
+    `);
+
     // 0. Evaluations first.
     //
     // `Evaluation.evaluator` holds its `Staff` with `Restrict`, so a fixture
@@ -121,7 +144,18 @@ export default async function globalTeardown(): Promise<void> {
     // 4. Accounts a fixture signed in as.
     await client.query(`DELETE FROM "User" WHERE mobile NOT LIKE '0912000%'`);
 
-    // 5. And the codes sent to them.
+    // 5. The files whose rows have just cascaded away.
+    const storageRoot = resolve(
+      process.cwd(),
+      process.env["STORAGE_LOCAL_PATH"] ?? "./storage/uploads",
+    );
+    for (const { storageKey } of fixtureFiles) {
+      await unlink(resolve(storageRoot, storageKey)).catch(() => {
+        // Already gone is the state we wanted.
+      });
+    }
+
+    // 6. And the codes sent to them.
     //
     // `OtpCode.userId` is **nullable** — a code is issued for an unknown
     // number too, so that a caller cannot tell membership from the response
