@@ -81,11 +81,29 @@ test.describe("roles and permissions", () => {
     await expect(page.getByText("مدیریت کاربران")).toBeHidden();
   });
 
+  /**
+   * The other half of the pair, and the reason it matters.
+   *
+   * Without this, "hidden from a coach" passes for a card that is hidden from
+   * *everyone* — which is exactly what happened when Phase 16 replaced the
+   * dashboard and took the card with it. One assertion said nothing was there;
+   * the other proved it was, and it was the one that caught the regression.
+   */
   test("the user-management card is shown to an administrator", async ({
     page,
   }) => {
     await signInAs(page, ["ADMIN"]);
     await expect(page.getByText("مدیریت کاربران")).toBeVisible();
+    // And it carries real figures, not a placeholder.
+    await expect(page.getByText("حساب‌های کاربری")).toBeVisible();
+  });
+
+  /** An academy manager runs the academy; they do not administer accounts. */
+  test("the user-management card is hidden from the academy manager", async ({
+    page,
+  }) => {
+    await signInAs(page, ["ACADEMY_MANAGER"]);
+    await expect(page.getByText("مدیریت کاربران")).toBeHidden();
   });
 
   test("a page size beyond the cap is rejected", async ({ page }) => {

@@ -120,6 +120,17 @@ export default async function globalTeardown(): Promise<void> {
 
     // 4. Accounts a fixture signed in as.
     await client.query(`DELETE FROM "User" WHERE mobile NOT LIKE '0912000%'`);
+
+    // 5. And the codes sent to them.
+    //
+    // `OtpCode.userId` is **nullable** — a code is issued for an unknown
+    // number too, so that a caller cannot tell membership from the response
+    // (Phase 2, docs/SECURITY.md). Those rows therefore survive the user sweep
+    // above, and every fixture sign-in left one behind for good. Matched on
+    // the mobile instead, which is the only column they all have.
+    await client.query(
+      `DELETE FROM "OtpCode" WHERE mobile NOT LIKE '0912000%'`,
+    );
   } finally {
     await client.end();
   }
