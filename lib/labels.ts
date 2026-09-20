@@ -1,5 +1,6 @@
 import type {
   ApplicationStatus,
+  DocumentType,
   AttendanceStatus,
   EvaluationDimension,
   EvaluationRecommendation,
@@ -137,6 +138,18 @@ export const PLAYER_STATUS_LABEL: Record<PlayerStatus, string> = {
   INJURED: "مصدوم",
   TRANSFERRED: "منتقل‌شده",
   RETIRED: "بازنشسته",
+};
+
+// --- documents --------------------------------------------------------------
+
+export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
+  ID_DOCUMENT: "کارت ملی",
+  BIRTH_CERTIFICATE: "شناسنامه",
+  CONTRACT: "قرارداد",
+  MEDICAL: "مدرک پزشکی",
+  PARENT_CONSENT: "رضایت‌نامه ولی",
+  PHOTO: "عکس",
+  OTHER: "سایر",
 };
 
 // --- communication ----------------------------------------------------------
