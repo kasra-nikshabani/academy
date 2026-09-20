@@ -213,6 +213,17 @@ export function startOfWeek(date: Date): Date {
   return addDays(startOfDay(date), -iranianWeekday(date));
 }
 
+/**
+ * A week named by the Saturday that opens it — `۲۴ شهریور`.
+ *
+ * Short on purpose: this is an axis tick on a trend chart, where the year is
+ * the same for every point and repeating it just crowds the axis.
+ */
+export function weekLabel(weekStart: Date): string {
+  const { jm, jd } = toJalali(weekStart);
+  return `${jd} ${JALALI_MONTH_NAMES[jm - 1]}`;
+}
+
 /** The seven days of the week containing the instant, Saturday first. */
 export function weekDays(date: Date): Date[] {
   const saturday = startOfWeek(date);

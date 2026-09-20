@@ -13,7 +13,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: Boolean(process.env["CI"]),
   retries: process.env["CI"] ? 2 : 0,
-  workers: process.env["CI"] ? 1 : undefined,
+  // Capped instead of "undefined" (= one Chromium per CPU core). With 18 spec
+  // files, unlimited workers next to the dev server, Postgres and the editor
+  // was enough concurrent Chromium instances to exhaust system memory.
+  workers: process.env["CI"] ? 1 : 2,
   reporter: process.env["CI"] ? "github" : "list",
 
   use: {

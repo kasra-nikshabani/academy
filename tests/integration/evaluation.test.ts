@@ -83,27 +83,17 @@ beforeAll(async () => {
 
   // The second seeded coach has no Staff row of their own; make one so the
   // "assigned to someone else" cases are real.
-  const otherPerson = await prisma.person.findFirst({
-    where: { userId: otherCoach.id },
-  });
-  const staff = otherPerson
-    ? await prisma.staff.upsert({
-        where: { personId: otherPerson.id },
-        update: { status: "ACTIVE" },
-        create: { personId: otherPerson.id, status: "ACTIVE" },
-      })
-    : await prisma.staff.create({
-        data: {
-          person: {
-            create: {
-              firstName: "مربی",
-              lastName: "دوم",
-              userId: otherCoach.id,
-            },
-          },
-        },
-      });
-  otherCoachStaffId = staff.id;
+  //
+  // The seed attaches this account to the U16 coach, so there is nothing to
+  // build here. It used to fall back to creating a person when it found none —
+  // and that person was never cleaned up, so one had been sitting in the
+  // database since Phase 11, quietly standing in for a seed that was
+  // incomplete (docs/PROJECT_RULES.md §6.1).
+  otherCoachStaffId = (
+    await prisma.staff.findFirstOrThrow({
+      where: { person: { userId: otherCoach.id } },
+    })
+  ).id;
 });
 
 afterAll(async () => {
@@ -239,7 +229,9 @@ describe("a coach cannot assign their way around the tryout permission", () => {
       evaluations.createEvaluationTemplate(coach, {
         sportId: sport.id,
         title: "الگوی خودساخته",
-        criteria: [{ dimension: "TECHNICAL", title: "هرچه", maxScore: 10, weight: 1 }],
+        criteria: [
+          { dimension: "TECHNICAL", title: "هرچه", maxScore: 10, weight: 1 },
+        ],
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
@@ -292,7 +284,9 @@ describe("filling in the sheet", () => {
         template: {
           create: {
             sportId: (
-              await prisma.sport.findFirstOrThrow({ where: { slug: "football" } })
+              await prisma.sport.findFirstOrThrow({
+                where: { slug: "football" },
+              })
             ).id,
             title: `الگوی بیگانه ${Date.now()}`,
           },
