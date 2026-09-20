@@ -99,6 +99,14 @@ export function navItemsFor(user: AuthorizedUser): NavItem[] {
     });
   }
 
+  if (hasPermission(user, "report:read")) {
+    items.push({
+      href: "/dashboard/reports",
+      label: "گزارش‌ها",
+      icon: "reports",
+    });
+  }
+
   // The inbox is reached from the bell in the shell, which is on every page;
   // the sidebar entry is for the announcements a sender writes.
   if (hasPermission(user, "notification:send")) {

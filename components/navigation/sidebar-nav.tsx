@@ -7,6 +7,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   Dumbbell,
+  FileSpreadsheet,
   Filter,
   Search,
   GraduationCap,
@@ -47,7 +48,8 @@ export type NavIconName =
   | "pipeline"
   | "matches"
   | "performance"
-  | "announcements";
+  | "announcements"
+  | "reports";
 
 const ICONS: Record<NavIconName, LucideIcon> = {
   home: LayoutDashboard,
@@ -66,6 +68,7 @@ const ICONS: Record<NavIconName, LucideIcon> = {
   matches: Swords,
   performance: TrendingUp,
   announcements: Megaphone,
+  reports: FileSpreadsheet,
 };
 
 export interface NavItem {

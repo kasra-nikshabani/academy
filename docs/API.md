@@ -548,6 +548,25 @@ GET /api/v1/users?page=1&pageSize=20&search=0912
 
 پاسخ شامل `counts`، `growth` (شش ماه جلالی)، `sports`، `funnel`، `attendance.trend` و `alerts` است. در `attendance.trend` مقدار `rate` می‌تواند **`null`** باشد — یعنی آن هفته تمرینی ثبت نشده، که با «صفر درصد حضور» یکی نیست.
 
+### گزارش‌ها
+
+| مسیر | متد | محافظ |
+|---|---|---|
+| `/api/v1/reports/:slug` | `GET` | مجوز همان گزارش + Scope **تیمی** |
+
+`:slug` یکی از `attendance`، `matches`، `roster`، `applications` است؛ چیز دیگری `422` می‌گیرد.
+
+| پارامتر | معنا |
+|---|---|
+| `format` | `json` (پیش‌فرض) یا `csv` |
+| `teamId` | محدود به یک تیم — خارج از Scope `403` |
+| `seasonId` | پیش‌فرض: فصل فعال |
+| `from` / `to` | بازه؛ `from >= to` یعنی `422` |
+
+**یک مسیر برای هر دو قالب**، چون باید همان گزارش باشند: دانلودی که از مسیر کد دیگری آمده باشد، همان‌جایی است که خروجی با صفحه اختلاف پیدا می‌کند.
+
+`format=csv` پاسخ را با `text/csv; charset=utf-8`، یک `Content-Disposition: attachment` و `Cache-Control: no-store` برمی‌گرداند. فایل با BOM شروع می‌شود و ارقامش لاتین است (`docs/BUSINESS_RULES.md` §۲۲).
+
 ## 6. مسیرهای برنامه‌ریزی‌شده
 
 | گروه | فاز |

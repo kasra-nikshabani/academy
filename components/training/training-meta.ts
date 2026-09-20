@@ -1,8 +1,16 @@
-import type {
-  AttendanceStatus,
-  TrainingStatus,
-  TrainingType,
-} from "@/lib/generated/prisma/enums";
+import type { AttendanceStatus } from "@/lib/generated/prisma/enums";
+
+/**
+ * The Persian words themselves live in `@/lib/labels` — the same word
+ * appears on a badge, in an exported CSV and in a notification body, so it
+ * is domain vocabulary rather than a design decision. The colour maps below
+ * genuinely are presentation, and stay here.
+ */
+export {
+  TRAINING_TYPE_LABEL,
+  TRAINING_STATUS_LABEL,
+  ATTENDANCE_STATUS_LABEL,
+} from "@/lib/labels";
 
 /**
  * How training reads in Persian.
@@ -11,29 +19,6 @@ import type {
  * the contract, a label is a design decision, and the two should be free to
  * change independently.
  */
-
-export const TRAINING_TYPE_LABEL: Record<TrainingType, string> = {
-  TECHNICAL: "فنی",
-  PHYSICAL: "بدنی",
-  TACTICAL: "تاکتیکی",
-  RECOVERY: "ریکاوری",
-  MIXED: "ترکیبی",
-  OTHER: "سایر",
-};
-
-export const TRAINING_STATUS_LABEL: Record<TrainingStatus, string> = {
-  DRAFT: "پیش‌نویس",
-  SCHEDULED: "برنامه‌ریزی‌شده",
-  COMPLETED: "برگزار شد",
-  CANCELLED: "لغو شد",
-};
-
-export const ATTENDANCE_STATUS_LABEL: Record<AttendanceStatus, string> = {
-  PRESENT: "حاضر",
-  LATE: "تأخیر",
-  ABSENT: "غایب",
-  EXCUSED: "موجه",
-};
 
 /**
  * The four statuses in the order a coach reads them — best to worst, with
