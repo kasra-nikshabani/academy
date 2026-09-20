@@ -345,17 +345,34 @@ async function main(): Promise<void> {
     }
 
     // A second coach, on U16, so "another coach's team" is a real thing.
+    //
+    // This is also the **coach who is also a parent** (`09120000006`). The
+    // account carried both roles from Phase 3, but nothing behind them: no
+    // `StaffTeam` and no `Guardian`, so the case the account exists to
+    // represent was not actually in the data and every test that used it was
+    // passing against an empty scope. Found in Phase 16, where the dual role
+    // is the argument for one dashboard rather than five.
     const otherCoach = await prisma.person.upsert({
       where: { nationalCode: nationalCode("100000002") },
-      update: {},
+      update: { userId: userByMobile.get("09120000006") ?? null },
       create: {
         firstName: "حسین",
         lastName: "کریمی",
         nationalCode: nationalCode("100000002"),
         gender: "MALE",
+        userId: userByMobile.get("09120000006") ?? null,
         staff: { create: { title: "سرمربی", status: "ACTIVE" } },
       },
-      include: { staff: true },
+      include: { staff: true, guardian: true },
+    });
+
+    // Separately, because `create` only runs on a database that has never been
+    // seeded — and the whole point of a re-runnable seed is that the second
+    // run leaves the same state as the first.
+    const otherCoachGuardian = await prisma.guardian.upsert({
+      where: { personId: otherCoach.id },
+      update: {},
+      create: { personId: otherCoach.id, occupation: "کارمند" },
     });
 
     if (otherCoach.staff) {
@@ -499,7 +516,28 @@ async function main(): Promise<void> {
       });
     }
 
-    console.info("  \u2713 1 guardian (linked to 1 player)");
+    // The coach-who-is-also-a-parent's child: the **second** player, in a squad
+    // he does not coach. That separation is the point — it proves the two
+    // scopes are independent rather than one standing in for the other.
+    if (createdPlayers[1]) {
+      await prisma.playerGuardian.upsert({
+        where: {
+          playerId_guardianId: {
+            playerId: createdPlayers[1],
+            guardianId: otherCoachGuardian.id,
+          },
+        },
+        update: {},
+        create: {
+          playerId: createdPlayers[1],
+          guardianId: otherCoachGuardian.id,
+          relation: "FATHER",
+          isPrimary: false,
+        },
+      });
+    }
+
+    console.info("  \u2713 2 guardians (one of them also a coach)");
 
     // --- enrolment --------------------------------------------------------
     const school = await prisma.school.findUniqueOrThrow({

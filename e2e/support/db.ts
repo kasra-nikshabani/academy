@@ -730,3 +730,52 @@ export async function countNotificationsForPlayer(
     return Number(rows[0]?.count ?? 0);
   });
 }
+
+/**
+ * One account that is a coach **and** a parent.
+ *
+ * Ordinary in an academy, and the reason the dashboard is one page rather than
+ * five: this person has a squad to run and a child who plays in a different
+ * one, and both are true at the same time. Built on top of
+ * `createCoachWithSquad` so the coaching half is exactly the fixture every
+ * other test uses.
+ *
+ * The child is in `otherTeamId` on purpose — a squad this coach does **not**
+ * run — so the two scopes cannot stand in for one another.
+ */
+export async function createCoachWhoIsAlsoAParent(mobile: string): Promise<{
+  teamId: string;
+  otherTeamId: string;
+  childId: string;
+}> {
+  const { teamId, otherTeamId, otherTeamPlayerId } =
+    await createCoachWithSquad(mobile);
+
+  await withClient(async (client) => {
+    const { rows: personRows } = await client.query<{ id: string }>(
+      `SELECT p.id FROM "Person" p
+         JOIN "User" u ON u.id = p."userId"
+        WHERE u.mobile = $1`,
+      [mobile],
+    );
+    const personId = personRows[0]!.id;
+
+    const { rows: guardianRows } = await client.query<{ id: string }>(
+      `INSERT INTO "Guardian" ("id","personId","createdAt","updatedAt")
+       VALUES (gen_random_uuid()::text, $1, now(), now())
+       ON CONFLICT ("personId") DO UPDATE SET "updatedAt" = now()
+       RETURNING id`,
+      [personId],
+    );
+
+    await client.query(
+      `INSERT INTO "PlayerGuardian"
+         ("id","playerId","guardianId","relation","isPrimary","createdAt")
+       VALUES (gen_random_uuid()::text, $1, $2, 'FATHER', true, now())
+       ON CONFLICT ("playerId","guardianId") DO NOTHING`,
+      [otherTeamPlayerId, guardianRows[0]!.id],
+    );
+  });
+
+  return { teamId, otherTeamId, childId: otherTeamPlayerId };
+}

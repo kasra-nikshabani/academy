@@ -181,6 +181,12 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 | `PerformanceChart` | `components/performance/performance-chart.tsx` |
 | `PerformancePanel` | `components/performance/performance-panel.tsx` |
 | `MeasurementForm` | `components/performance/measurement-form.tsx` |
+| `StatCard` | `components/dashboard/stat-card.tsx` |
+| `AlertList` | `components/dashboard/alert-list.tsx` |
+| `GrowthChart` | `components/dashboard/growth-chart.tsx` |
+| `AttendanceTrendChart` | `components/dashboard/attendance-trend-chart.tsx` |
+| `SportDistribution` | `components/dashboard/sport-distribution.tsx` |
+| `SchedulePreview` | `components/dashboard/schedule-preview.tsx` |
 | `PageHeader` | `components/layout/page-header.tsx` |
 
 ### ⏳ عمداً به تعویق افتاده
@@ -192,7 +198,7 @@ Button · Input · Textarea · Label · Select · Checkbox · RadioGroup · Swit
 
 ### Domain Component ها
 
-PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · ~~EvaluationCard~~ (✅ ۱۱ — به‌صورت `EvaluationSheet`) · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · ~~PerformanceChart~~ (✅ ۱۴)· ~~TalentFunnel~~ (✅ ۱۲) · StatCard — هرکدام در فاز دامنه خودش.
+PlayerCard · ~~PlayerJourney~~ (✅ ۷) · TeamCard · ~~TrainingCard~~ (✅ ۸) · TryoutCard · ~~EvaluationCard~~ (✅ ۱۱ — به‌صورت `EvaluationSheet`) · ~~AttendanceTable~~ (✅ ۹ — به‌صورت `AttendanceSheet`) · ~~PerformanceChart~~ (✅ ۱۴) · ~~TalentFunnel~~ (✅ ۱۲) · ~~StatCard~~ (✅ ۱۶) — هرکدام در فاز دامنه خودش.
 
 ### چرا دفتر حضور جدول نشد
 
@@ -302,3 +308,27 @@ Recharts در مختصات SVG می‌کشد و `dir="rtl"` آن را برنمی
 
 - **محور مقدار سمت راست** قرار می‌گیرد، جایی که خواندن از آن شروع می‌شود. پیش‌فرض کتابخانه آن را سمت چپ می‌گذارد.
 - **محور زمان از چپ به راست** می‌ماند. زمان جهت نوشتار نیست؛ برگرداندنش ماه گذشته را سمت راستِ این ماه می‌نشاند.
+
+## 11. انتخاب شکل نمودار — Phase 16
+
+| داده | شکل | چرا نه چیز دیگر |
+|---|---|---|
+| یک عدد جاری | **کاشی** (`StatCard`) | نمودار میله‌ای تک‌میله، محور می‌کشد بی‌آنکه اطلاعاتی اضافه کند |
+| تعداد بازیکن در طول زمان | **Area** تک‌سری | سطح پرشده «چند نفر هستند» را می‌گوید؛ خط خالی مثل نرخ خوانده می‌شود |
+| نرخ حضور در طول زمان | **خط** با شکاف | نرخ، سهمی از یک کل معلوم است |
+| سهم رشته‌ها از کل | **میله انباشته افقی** | مقایسه طول از مقایسه زاویه آسان‌تر است — دایره‌ای نه |
+| قیف استعدادیابی | میله‌های نسبی (فاز ۱۲) | مرحله‌ها ترتیب دارند؛ رنگ دسته‌ای ترتیب را پنهان می‌کند |
+
+### محور صفرمبنا: گاهی بله، گاهی نه
+
+- **تعداد بازیکن از صفر شروع می‌شود.** یک شمارش، مقدار است و صفر کف واقعی و معناداری دارد.
+- **قد بازیکن نمی‌شود.** یک موقعیت روی مقیاسی است که صفر در آن هرگز رخ نمی‌دهد، و قاب‌بندی روی صفر کل موضوع را صاف می‌کند (§۱۰).
+- **نرخ حضور روی ۰ تا ۱۰۰ ثابت است.** قاب‌بندی روی داده، ۸۸٪ و ۹۲٪ را شبیه پرتگاه نشان می‌دهد.
+
+### دو نقطه یا نمودار نیست
+
+با یک هفته‌ی اندازه‌گیری‌شده، خط چیزی برای وصل کردن ندارد و Recharts یک نقطه سه‌پیکسلی در گوشه می‌کشد — که مثل نمودار خالی خوانده می‌شود نه مثل یک قرائت. به‌جایش عدد به‌صورت متن نوشته می‌شود. همان قاعده پنل عملکرد در فاز ۱۴.
+
+### برچسب محور، سال را تکرار نمی‌کند
+
+شش برچسب ماه که پنج بارشان «۱۴۰۵» دارند، بیشترِ محور را صرف تکرار چیزی می‌کنند که خواننده می‌داند. نام ماه روی محور، سال داخل Tooltip.
