@@ -56,6 +56,24 @@ export async function findPersonIdForUser(
   return person?.id ?? null;
 }
 
+/**
+ * A person, with just enough to answer "may this caller reach them".
+ *
+ * Their player record if they have one, and the account they sign in with.
+ * Documents hang off a `Person` while scope is expressed in players, and this
+ * is the join between the two (lib/services/document.service.ts).
+ */
+export function findPersonReach(id: string) {
+  return prisma.person.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      userId: true,
+      player: { select: { id: true } },
+    },
+  });
+}
+
 /** Players a guardian is joined to, plus the caller's own player record. */
 export async function findPlayerIdsForUser(userId: string): Promise<string[]> {
   const [children, own] = await prisma.$transaction([

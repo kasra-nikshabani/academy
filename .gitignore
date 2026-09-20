@@ -63,3 +63,6 @@ Thumbs.db
 # --- misc ---
 .vercel
 .turbo
+
+# --- uploaded documents (NEVER commit: real identity papers) ---
+/storage/

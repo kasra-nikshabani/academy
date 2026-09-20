@@ -435,6 +435,7 @@ model Person {
   staff    Staff?
 
   notifications Notification[]
+  documents     Document[]
 
   @@index([lastName, firstName])
 }
@@ -1595,4 +1596,77 @@ model Announcement {
   @@index([status, publishedAt])
   @@index([teamId])
   @@index([schoolId])
+}
+
+// ---------------------------------------------------------------------------
+// Documents — Phase 18
+//
+//   Person ──< Document
+//
+// **Attached to a `Person`, not a `Player`.** A guardian's identity document,
+// a coach's contract and a child's birth certificate are the same kind of
+// record about three different kinds of people, and `Person` is what they all
+// are — the same reasoning that put notifications there in Phase 15.
+//
+// The row holds everything *about* the file and none of the file: the bytes
+// live behind `lib/storage`, which is local disk today and object storage
+// later without this table changing.
+//
+// ## What is trusted here, and what is not
+//
+// `contentType` is what the **bytes** turned out to be, decided by
+// `lib/storage/signature.ts` — never the header the browser sent.
+// `storageKey` is a random key this system generated. `originalName` is the
+// only field that came from the uploader, it is a label, and it is never
+// joined to a path.
+// ---------------------------------------------------------------------------
+
+enum DocumentType {
+  ID_DOCUMENT
+  BIRTH_CERTIFICATE
+  CONTRACT
+  MEDICAL
+  PARENT_CONSENT
+  PHOTO
+  OTHER
+}
+
+model Document {
+  id String @id @default(cuid())
+
+  /// Whose document it is.
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  type DocumentType @default(OTHER)
+
+  /// Where the bytes are. Generated, never derived from the upload
+  /// (lib/storage/keys.ts). Unique because a key is used once.
+  storageKey String @unique
+
+  /// What the file actually is, read from its leading bytes.
+  contentType String
+  sizeBytes   Int
+
+  /// The name the file arrived with — shown to a person, never a path.
+  originalName String
+
+  title String?
+  notes String?
+
+  uploadedById String?
+
+  /// Archived rather than deleted. A consent form that was withdrawn is a
+  /// thing that happened, and the club may need to show it did
+  /// (CLAUDE.md §2). The bytes go when the row is finally purged, which is a
+  /// deliberate act and not this.
+  archivedAt   DateTime?
+  archivedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  /// The list on a person's record: their documents, newest first.
+  @@index([personId, archivedAt, createdAt])
+  @@index([type])
 }

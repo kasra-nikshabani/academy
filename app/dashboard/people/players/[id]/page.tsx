@@ -16,6 +16,10 @@ import {
   canRecordForPlayer,
   getPlayerPerformance,
 } from "@/lib/services/performance.service";
+import {
+  canUploadDocuments,
+  listPlayerDocuments,
+} from "@/lib/services/document.service";
 import { OUTCOME_CLASS, OUTCOME_LABEL } from "@/components/matches/match-meta";
 import { matchOutcome } from "@/lib/services/match-result";
 import {
@@ -28,6 +32,8 @@ import { PlayerJourney } from "@/components/players/player-journey";
 import { AttendanceSummary } from "@/components/training/attendance-summary";
 import { PerformancePanel } from "@/components/performance/performance-panel";
 import { MeasurementForm } from "@/components/performance/measurement-form";
+import { DocumentList } from "@/components/documents/document-list";
+import { DocumentUpload } from "@/components/documents/document-upload";
 import { hasPermission } from "@/lib/permissions";
 import { formatJalali, toJalali } from "@/lib/utils/date";
 import { toPersianDigits } from "@/lib/utils/number";
@@ -100,6 +106,14 @@ export default async function PlayerPage(props: {
   // child, and rendering a form that would be refused on submit is worse than
   // rendering none (docs/PERMISSIONS.md §2).
   const canRecord = await canRecordForPlayer(caller, id);
+
+  // A reader without `document:read`, or one who may not reach this player,
+  // gets no section — not an error page. A medical file is already filtered
+  // out of the list itself for anyone who may not open it.
+  const documents = hasPermission(caller, "document:read")
+    ? await listPlayerDocuments(caller, id).catch(() => [])
+    : [];
+  const canUpload = canUploadDocuments(caller);
 
   return (
     <>
@@ -438,6 +452,35 @@ export default async function PlayerPage(props: {
                 </li>
               ))}
             </ul>
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {documents.length > 0 || canUpload ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">مدارک</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <DocumentList
+              documents={documents.map((document) => ({
+                id: document.id,
+                type: document.type,
+                contentType: document.contentType,
+                sizeBytes: document.sizeBytes,
+                originalName: document.originalName,
+                title: document.title,
+                createdAt: document.createdAt.toISOString(),
+              }))}
+              canArchive={canUpload}
+            />
+
+            {canUpload ? (
+              <div className="border-t border-border pt-4">
+                <p className="mb-3 text-sm font-medium">بارگذاری سند تازه</p>
+                <DocumentUpload personId={player.person.id} />
+              </div>
+            ) : null}
           </CardContent>
         </Card>
       ) : null}
